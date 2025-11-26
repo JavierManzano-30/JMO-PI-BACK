@@ -1,0 +1,16 @@
+@startjson
+{
+  "id": 123,
+  "title": "Paisaje en la Sierra",
+  "description": "Foto tomada al amanecer",
+  "image_url": "https://cloudinary.com/img/foto123.jpg",
+  "user": {
+    "id": 45,
+    "username": "javier"
+  },
+  "community_id": 8,
+  "theme_id": 12,
+  "created_at": "2024-02-15T18:23:01Z"
+}
+@endjson
+

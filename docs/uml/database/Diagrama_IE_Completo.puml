@@ -1,0 +1,104 @@
+@startuml
+
+title IE Diagram - SnapNation DB Model
+
+entity "users" as U {
+  *id : int
+  --
+  username : varchar
+  email : varchar
+  password_hash : varchar
+  display_name : varchar
+  avatar_url : varchar
+  role : varchar
+  community_id : int
+  created_at : datetime
+}
+
+entity "communities" as C {
+  *id : int
+  --
+  code : varchar
+  name : varchar
+}
+
+entity "themes" as T {
+  *id : int
+  --
+  title : varchar
+  description : varchar
+  start_date : date
+  end_date : date
+  is_active : bool
+}
+
+entity "categories" as CAT {
+  *id : int
+  --
+  slug : varchar
+  name : varchar
+}
+
+entity "photos" as P {
+  *id : int
+  --
+  user_id : int
+  theme_id : int
+  community_id : int
+  category_id : int
+  title : varchar
+  description : varchar
+  image_url : varchar
+  thumb_url : varchar
+  is_moderated : bool
+  is_deleted : bool
+  created_at : datetime
+}
+
+entity "votes" as V {
+  *id : int
+  --
+  photo_id : int
+  user_id : int
+  created_at : datetime
+}
+
+entity "winners" as W {
+  *id : int
+  --
+  theme_id : int
+  community_id : int
+  photo_id : int
+  votes_count : int
+  position : int
+}
+
+entity "moderations" as M {
+  *id : int
+  --
+  photo_id : int
+  moderator_id : int
+  action : varchar
+  reason : varchar
+  created_at : datetime
+}
+
+' --- RELATIONS ---
+C ||--o{ U : "community_id"
+U ||--o{ P : "user_id"
+T ||--o{ P : "theme_id"
+C ||--o{ P : "community_id"
+CAT ||--o{ P : "category_id"
+
+P ||--o{ V : "photo_id"
+U ||--o{ V : "user_id"
+
+W ||--|| T : "theme_id"
+W ||--|| P : "photo_id"
+W ||--|| C : "community_id"
+
+P ||--o{ M : "photo_id"
+U ||--o{ M : "moderator_id"
+
+@enduml
+

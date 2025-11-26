@@ -1,0 +1,28 @@
+@startjson
+{
+  "week": "2024-W07",
+  "winners": [
+    {
+      "photo_id": 233,
+      "votes": 148,
+      "title": "Atardecer Morado",
+      "community": "Madrid",
+      "user": {
+        "id": 80,
+        "username": "Ana_Pics"
+      }
+    },
+    {
+      "photo_id": 241,
+      "votes": 130,
+      "title": "Bici y lluvia",
+      "community": "Catalunya",
+      "user": {
+        "id": 15,
+        "username": "Carlos_Fotos"
+      }
+    }
+  ]
+}
+@endjson
+

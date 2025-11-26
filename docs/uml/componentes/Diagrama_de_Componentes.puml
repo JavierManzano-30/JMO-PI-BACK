@@ -1,0 +1,59 @@
+@startuml
+title Componentes SnapNation
+
+package "FrontEnd" {
+  [UI Pages]
+  [User Module]
+  [Photo Module]
+  [Vote Module]
+  [HTTP Client]
+}
+
+package "BackEnd API" {
+  [REST API]
+  [Auth Service]
+  [Photo Service]
+  [Vote Service]
+  [Theme Service]
+  [Winner Service]
+  [Data Access Layer]
+}
+
+package "External Services" {
+  [Cloudinary Service]
+}
+
+database BD
+
+' --- Relaciones FrontEnd -> API ---
+[UI Pages] --> [User Module]
+[UI Pages] --> [Photo Module]
+[UI Pages] --> [Vote Module]
+[User Module] --> [HTTP Client]
+[Photo Module] --> [HTTP Client]
+[Vote Module] --> [HTTP Client]
+
+[HTTP Client] --> [REST API]
+
+' --- API internals ---
+[REST API] --> [Auth Service]
+[REST API] --> [Photo Service]
+[REST API] --> [Vote Service]
+[REST API] --> [Theme Service]
+[REST API] --> [Winner Service]
+
+' --- Services to DAO ---
+[Auth Service] --> [Data Access Layer]
+[Photo Service] --> [Data Access Layer]
+[Vote Service] --> [Data Access Layer]
+[Theme Service] --> [Data Access Layer]
+[Winner Service] --> [Data Access Layer]
+
+' --- DAO to Database ---
+[Data Access Layer] --> BD
+
+' --- Photo upload to Cloudinary ---
+[Photo Service] --> [Cloudinary Service]
+
+@enduml
+
