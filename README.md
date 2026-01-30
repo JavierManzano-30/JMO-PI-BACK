@@ -1,8 +1,22 @@
 # 🖥 Backend — SnapNation (Sprint 5)
 
-El backend de **SnapNation** es una API REST desarrollada en **Node.js + Express**, que gestiona la autenticación, publicación y votación de fotos, moderación de contenido y administración de temas semanales. También controla el almacenamiento de imágenes mediante **Cloudinary** y persiste los datos en **PostgreSQL**.
+El backend de **SnapNation** es una API REST desarrollada en **Node.js + Express**, que gestiona la autenticación, publicación y votación de fotos, moderación de contenido y administración de temas semanales. Persiste los datos en **PostgreSQL** y en esta implementación base almacena imágenes en local con **Multer** (Cloudinary puede añadirse más adelante).
 
 En este sprint el objetivo no es desarrollar nuevas funcionalidades, sino **documentar el diseño completo del backend y su relación con el frontend**, a través de diagramas UML realizados con PlantUML.
+
+---
+
+## ✅ Estado actual (implementación base)
+
+Actualmente el backend incluye:
+
+- Conexión a PostgreSQL mediante `pg` y scripts SQL (`sql/schema.sql` + `sql/seed.sql`)
+- Endpoints base según `docs/api/openapi.yaml`
+- Autenticación JWT (registro/login y rutas protegidas)
+- Subida de imágenes con `multer` y almacenamiento local en `/uploads`
+- Respuestas y errores siguiendo las convenciones de `docs/api/convenciones.md`
+
+> Nota: Cloudinary queda pendiente de integrar si se desea en producción.
 
 ---
 
@@ -112,10 +126,11 @@ El backend se desglosa en módulos:
 Para ejecutar el backend:
 
 1. Acceder a `JMO-PI-BACK`
-2. Instalar dependencias con `npm install`
-3. Crear el archivo `.env` a partir de `.env.example`
-4. Ejecutar la API con `npm run dev`
-5. Base de datos opcional mediante Docker (`docker compose up -d db`)
+2. Levantar la base de datos con Docker: `docker compose up -d db`
+3. Instalar dependencias con `npm install`
+4. Crear el archivo `.env` a partir de `.env.example`
+5. Aplicar esquema y seed: `npm run db:setup`
+6. Ejecutar la API con `npm run dev`
 
 ---
 
@@ -137,7 +152,7 @@ Para ejecutar el backend:
 | Node.js + Express | API REST |
 | PostgreSQL | Persistencia de datos |
 | JWT | Autenticación |
-| Cloudinary | Almacenamiento de imágenes |
+| Multer | Subida de imágenes (almacenamiento local) |
 | Docker | Servicio de base de datos opcional |
 | PlantUML | Documentación y modelado |
 
