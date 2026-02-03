@@ -20,6 +20,27 @@ Actualmente el backend incluye:
 
 ---
 
+## 🧠 Controladores y lógica
+
+Para dejar **claro dónde vive la lógica**, los endpoints están separados en:
+
+- **Routes (capa delgada)**: solo definen rutas y middlewares.
+- **Controllers (lógica real)**: validaciones, reglas de negocio y acceso a datos.
+
+Controladores principales:
+
+- `src/controllers/authController.js` → registro y login (validaciones, hash, JWT).
+- `src/controllers/usersController.js` → perfil del usuario (`/users/me`).
+- `src/controllers/photosController.js` → listado, detalle, subida y borrado.
+- `src/controllers/themesController.js` → listado y creación de temas.
+- `src/controllers/communitiesController.js` → listado y detalle de comunidades.
+- `src/controllers/categoriesController.js` → listado de categorías.
+- `src/controllers/votesController.js` → votar y quitar voto.
+
+Así el profesor puede ver fácilmente que la lógica está centralizada en controladores.
+
+---
+
 ## 🧩 Relación con los diagramas del Sprint 5
 
 ### 🎭 Casos de Uso (Backend como proveedor de funcionalidades)
