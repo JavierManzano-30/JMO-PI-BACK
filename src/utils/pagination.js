@@ -1,8 +1,20 @@
+import { createError } from './errors.js';
+
 export function parsePagination(query) {
-  const page = Number.parseInt(query.page, 10) || 1;
-  const limit = Number.parseInt(query.limit, 10) || 10;
-  const safePage = page < 1 ? 1 : page;
-  const safeLimit = limit < 1 ? 10 : Math.min(limit, 100);
+  const hasPage = query.page !== undefined;
+  const hasLimit = query.limit !== undefined;
+  const pageValue = Number.parseInt(query.page, 10);
+  const limitValue = Number.parseInt(query.limit, 10);
+
+  if (hasPage && (Number.isNaN(pageValue) || pageValue < 1)) {
+    throw createError(400, 'VALIDATION_ERROR', 'page inválido', []);
+  }
+  if (hasLimit && (Number.isNaN(limitValue) || limitValue < 1)) {
+    throw createError(400, 'VALIDATION_ERROR', 'limit inválido', []);
+  }
+
+  const safePage = hasPage ? pageValue : 1;
+  const safeLimit = hasLimit ? Math.min(limitValue, 100) : 10;
   const offset = (safePage - 1) * safeLimit;
 
   return {

@@ -7,7 +7,18 @@ import { errorHandler } from './middleware/errorHandler.js';
 
 const app = express();
 
-app.use(cors());
+const corsOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim()).filter(Boolean)
+  : null;
+const corsCredentials = process.env.CORS_CREDENTIALS === 'true';
+
+app.use(
+  cors({
+    origin: corsOrigins && corsOrigins.length > 0 ? corsOrigins : true,
+    credentials: corsCredentials,
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  })
+);
 app.use(express.json());
 app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads')));
 
