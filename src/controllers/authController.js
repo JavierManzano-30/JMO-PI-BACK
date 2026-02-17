@@ -1,7 +1,13 @@
+// Controlador: recibe la peticion HTTP, valida entradas y construye la respuesta.
 import bcrypt from 'bcryptjs';
-import pool from '../db/pool.js';
 import { createError } from '../utils/errors.js';
 import { signToken } from '../utils/auth.js';
+import {
+  findCommunityById,
+  findUserByEmailOrUsername,
+  findUserForLoginByEmail,
+  insertUser,
+} from '../models/authModel.js';
 
 function mapUser(row) {
   return {
@@ -18,7 +24,71 @@ function mapUser(row) {
 }
 
 function isValidEmail(email) {
-  return typeof email === 'string' && /.+@.+\..+/.test(email);
+  if (typeof email !== 'string') {
+    return false;
+  }
+
+  const value = email.trim();
+
+  if (value.length < 6 || value.length > 254 || value.includes(' ')) {
+    return false;
+  }
+
+  const atIndex = value.indexOf('@');
+  if (atIndex <= 0 || atIndex !== value.lastIndexOf('@') || atIndex === value.length - 1) {
+    return false;
+  }
+
+  const local = value.slice(0, atIndex);
+  const domain = value.slice(atIndex + 1);
+
+  if (local.length < 1 || local.length > 64 || domain.length < 3 || domain.length > 253) {
+    return false;
+  }
+
+  if (local.startsWith('.') || local.endsWith('.') || local.includes('..')) {
+    return false;
+  }
+
+  if (domain.startsWith('.') || domain.endsWith('.') || domain.includes('..')) {
+    return false;
+  }
+
+  const isAscii = (str) => [...str].every((char) => char.charCodeAt(0) <= 127);
+  if (!isAscii(local) || !isAscii(domain)) {
+    return false;
+  }
+
+  const validLocalChars = new Set(
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.!#$%&'*+/=?^_`{|}~-"
+  );
+  for (const char of local) {
+    if (!validLocalChars.has(char)) {
+      return false;
+    }
+  }
+
+  const labels = domain.split('.');
+  if (labels.length < 2) {
+    return false;
+  }
+
+  for (const label of labels) {
+    if (label.length < 1 || label.length > 63) {
+      return false;
+    }
+
+    if (!/^[A-Za-z0-9-]+$/.test(label)) {
+      return false;
+    }
+
+    if (label.startsWith('-') || label.endsWith('-')) {
+      return false;
+    }
+  }
+
+  const tld = labels[labels.length - 1];
+  return tld.length >= 2;
 }
 
 function isValidUsername(username) {
@@ -35,10 +105,7 @@ export async function register(req, res) {
   const normalizedEmail = email.toLowerCase();
   const normalizedUsername = username;
 
-  const existing = await pool.query(
-    'SELECT id FROM users WHERE email = $1 OR username = $2',
-    [normalizedEmail, normalizedUsername]
-  );
+  const existing = await findUserByEmailOrUsername(normalizedEmail, normalizedUsername);
 
   if (existing.rowCount > 0) {
     throw createError(409, 'USER_EXISTS', 'El usuario ya existe', []);
@@ -49,19 +116,19 @@ export async function register(req, res) {
     throw createError(400, 'VALIDATION_ERROR', 'Comunidad inválida', []);
   }
   if (communityId) {
-    const communityCheck = await pool.query('SELECT id FROM communities WHERE id = $1', [communityId]);
+    const communityCheck = await findCommunityById(communityId);
     if (communityCheck.rowCount === 0) {
       throw createError(400, 'VALIDATION_ERROR', 'Comunidad inválida', []);
     }
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const result = await pool.query(
-    `INSERT INTO users (username, email, password_hash, community_id)
-     VALUES ($1, $2, $3, $4)
-     RETURNING id, username, email, display_name, avatar_url, role, community_id, created_at, updated_at`,
-    [normalizedUsername, normalizedEmail, passwordHash, communityId || null]
-  );
+  const result = await insertUser({
+    username: normalizedUsername,
+    email: normalizedEmail,
+    passwordHash,
+    communityId,
+  });
 
   const user = mapUser(result.rows[0]);
   const token = signToken(user);
@@ -77,10 +144,7 @@ export async function login(req, res) {
   }
 
   const normalizedEmail = email.toLowerCase();
-  const result = await pool.query(
-    'SELECT id, username, email, password_hash, display_name, avatar_url, role, community_id, created_at, updated_at FROM users WHERE email = $1',
-    [normalizedEmail]
-  );
+  const result = await findUserForLoginByEmail(normalizedEmail);
 
   if (result.rowCount === 0) {
     throw createError(401, 'AUTH_REQUIRED', 'Credenciales incorrectas', []);

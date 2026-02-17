@@ -1,9 +1,9 @@
+// Capa de base de datos: conexion y scripts auxiliares para SQL.
 import pkg from 'pg';
+import config from '../config.js';
 
 const { Pool } = pkg;
 
-const connectionString = process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/proyecto';
-
-const pool = new Pool({ connectionString });
+const pool = new Pool({ connectionString: config.db.connectionString });
 
 export default pool;

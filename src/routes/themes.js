@@ -1,3 +1,4 @@
+// Rutas de la API: conectan endpoint, middlewares y controlador.
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { requireRole } from '../middleware/requireRole.js';

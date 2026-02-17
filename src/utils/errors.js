@@ -1,3 +1,4 @@
+// Utilidad compartida: helpers reutilizables para simplificar el codigo.
 export function createError(status, code, message, details = []) {
   const error = new Error(message);
   error.status = status;

@@ -1,7 +1,7 @@
+// Middleware de Express: intercepta peticiones para aplicar reglas comunes.
 import jwt from 'jsonwebtoken';
 import { createError } from '../utils/errors.js';
-
-const jwtSecret = process.env.JWT_SECRET || 'dev_secret_change_me';
+import config from '../config.js';
 
 export function authenticate(req, _res, next) {
   const header = req.headers.authorization || '';
@@ -12,10 +12,10 @@ export function authenticate(req, _res, next) {
   }
 
   try {
-    const payload = jwt.verify(token, jwtSecret);
+    const payload = jwt.verify(token, config.jwt.secret);
     req.user = payload;
     return next();
-  } catch (error) {
+  } catch {
     return next(createError(401, 'AUTH_REQUIRED', 'Token no presente o inválido'));
   }
 }
@@ -29,8 +29,8 @@ export function optionalAuth(req, _res, next) {
   }
 
   try {
-    req.user = jwt.verify(token, jwtSecret);
-  } catch (error) {
+    req.user = jwt.verify(token, config.jwt.secret);
+  } catch {
     req.user = null;
   }
 

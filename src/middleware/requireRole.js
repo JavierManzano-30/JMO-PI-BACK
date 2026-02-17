@@ -1,3 +1,4 @@
+// Middleware de Express: intercepta peticiones para aplicar reglas comunes.
 import { createError } from '../utils/errors.js';
 
 export function requireRole(role) {

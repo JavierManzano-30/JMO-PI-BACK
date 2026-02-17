@@ -1,3 +1,4 @@
+// Controlador: recibe la peticion HTTP, valida entradas y construye la respuesta.
 import pool from '../db/pool.js';
 import { createError } from '../utils/errors.js';
 

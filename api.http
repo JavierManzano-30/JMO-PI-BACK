@@ -1,0 +1,74 @@
+# Variables globales del archivo (puedes cambiar baseUrl segun entorno).
+@baseUrl = http://localhost:3000
+@api = {{baseUrl}}/api/v1
+# Pega aqui el JWT que devuelve el login para probar rutas protegidas.
+@token = TOKEN_AQUI
+
+### Health (root)
+GET {{baseUrl}}/health
+Accept: application/json
+
+### Health (API)
+GET {{api}}/health
+Accept: application/json
+
+### Swagger UI
+GET {{baseUrl}}/docs
+Accept: text/html
+
+### OpenAPI JSON
+GET {{baseUrl}}/openapi.json
+Accept: application/json
+
+### Auth - Register
+POST {{api}}/auth/register
+Content-Type: application/json
+
+# Usuario de prueba para desarrollo local.
+{
+  "username": "demo_user",
+  "email": "demo_user@snapnation.test",
+  "password": "12345678"
+}
+
+### Auth - Login
+POST {{api}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "demo_user@snapnation.test",
+  "password": "12345678"
+}
+
+### Users - Me (requiere token)
+GET {{api}}/users/me
+Authorization: Bearer {{token}}
+
+### Users - Delete Me (requiere token)
+DELETE {{api}}/users/me
+Authorization: Bearer {{token}}
+
+### Users - Delete By Id (solo admin)
+# Sustituye 2 por el id real a eliminar.
+DELETE {{api}}/users/2
+Authorization: Bearer {{token}}
+
+### Email - Test (MailHog)
+POST {{api}}/email/test
+Content-Type: application/json
+
+{
+  "to": "destino@correo.com",
+  "subject": "Prueba MailHog",
+  "text": "Hola desde SnapNation backend"
+}
+
+### Email - Test con HTML
+POST {{api}}/email/test
+Content-Type: application/json
+
+{
+  "to": "destino@correo.com",
+  "subject": "Prueba HTML",
+  "html": "<h1>Mail de prueba</h1><p>Enviado con MailHog</p>"
+}

@@ -1,11 +1,13 @@
-import pool from '../db/pool.js';
+// Controlador: recibe la peticion HTTP, valida entradas y construye la respuesta.
+import {
+  deleteUserById as deleteUserByIdModel,
+  findUserProfileById,
+  updateUserProfileById,
+} from '../models/usersModel.js';
 import { createError } from '../utils/errors.js';
 
 export async function getMe(req, res) {
-  const result = await pool.query(
-    'SELECT id, username, email, display_name, avatar_url, role, community_id, created_at, updated_at FROM users WHERE id = $1',
-    [req.user.id]
-  );
+  const result = await findUserProfileById(req.user.id);
 
   if (result.rowCount === 0) {
     throw createError(404, 'USER_NOT_FOUND', 'Usuario no encontrado', []);
@@ -16,38 +18,49 @@ export async function getMe(req, res) {
 
 export async function updateMe(req, res) {
   const { display_name } = req.body || {};
-  const updates = [];
-  const values = [];
-  let index = 1;
+  const patch = {};
 
   if (display_name !== undefined) {
     if (typeof display_name !== 'string' || display_name.length > 100) {
       throw createError(400, 'VALIDATION_ERROR', 'display_name inválido', []);
     }
-    updates.push(`display_name = $${index}`);
-    values.push(display_name || null);
-    index += 1;
+    patch.displayName = display_name;
   }
 
   if (req.file) {
-    const avatarUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
-    updates.push(`avatar_url = $${index}`);
-    values.push(avatarUrl);
-    index += 1;
+    patch.avatarUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
   }
 
-  if (updates.length === 0) {
+  if (Object.keys(patch).length === 0) {
     throw createError(400, 'VALIDATION_ERROR', 'No hay cambios para aplicar', []);
   }
 
-  values.push(req.user.id);
-  const result = await pool.query(
-    `UPDATE users
-     SET ${updates.join(', ')}, updated_at = NOW()
-     WHERE id = $${index}
-     RETURNING id, username, email, display_name, avatar_url, role, community_id, created_at, updated_at`,
-    values
-  );
+  const result = await updateUserProfileById(req.user.id, patch);
 
   res.json(result.rows[0]);
+}
+
+export async function deleteMe(req, res) {
+  const result = await deleteUserByIdModel(req.user.id);
+
+  if (result.rowCount === 0) {
+    throw createError(404, 'USER_NOT_FOUND', 'Usuario no encontrado', []);
+  }
+
+  res.status(204).send();
+}
+
+export async function deleteUserById(req, res) {
+  const userId = Number.parseInt(req.params.id, 10);
+  if (!userId || userId < 1 || Number.isNaN(userId)) {
+    throw createError(400, 'VALIDATION_ERROR', 'ID inválido', []);
+  }
+
+  const result = await deleteUserByIdModel(userId);
+
+  if (result.rowCount === 0) {
+    throw createError(404, 'USER_NOT_FOUND', 'Usuario no encontrado', []);
+  }
+
+  res.status(204).send();
 }

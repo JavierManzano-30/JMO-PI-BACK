@@ -1,3 +1,4 @@
+// Utilidad compartida: helpers reutilizables para simplificar el codigo.
 import { createError } from './errors.js';
 
 export function parsePagination(query) {

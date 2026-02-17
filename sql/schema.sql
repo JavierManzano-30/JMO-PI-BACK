@@ -49,8 +49,7 @@ CREATE TABLE IF NOT EXISTS photos (
   thumb_url TEXT,
   is_moderated BOOLEAN NOT NULL DEFAULT FALSE,
   is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  CONSTRAINT uq_photos_user_theme UNIQUE (user_id, theme_id)
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS votes (
@@ -80,6 +79,9 @@ CREATE TABLE IF NOT EXISTS winners (
 CREATE INDEX IF NOT EXISTS idx_photos_theme_id ON photos(theme_id);
 CREATE INDEX IF NOT EXISTS idx_photos_user_id ON photos(user_id);
 CREATE INDEX IF NOT EXISTS idx_photos_community_id ON photos(community_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_photos_user_theme_active
+  ON photos(user_id, theme_id)
+  WHERE is_deleted = false;
 CREATE INDEX IF NOT EXISTS idx_votes_photo_id ON votes(photo_id);
 CREATE INDEX IF NOT EXISTS idx_themes_community_id ON themes(community_id);
 CREATE INDEX IF NOT EXISTS idx_themes_is_active ON themes(is_active);

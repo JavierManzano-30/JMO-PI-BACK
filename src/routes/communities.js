@@ -1,3 +1,4 @@
+// Rutas de la API: conectan endpoint, middlewares y controlador.
 import { Router } from 'express';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { listCommunities, getCommunityById } from '../controllers/communitiesController.js';

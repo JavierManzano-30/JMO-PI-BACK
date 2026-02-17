@@ -1,0 +1,267 @@
+openapi: 3.0.3
+info:
+  title: JMO-Backend API
+  version: 1.0.0
+  description: API REST de SnapNation.
+servers:
+  - url: http://localhost:3000
+tags:
+  - name: Health
+  - name: Auth
+  - name: Users
+  - name: Photos
+  - name: Themes
+  - name: Categories
+  - name: Email
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check general
+      responses:
+        '200':
+          description: Servicio activo
+  /api/v1/health:
+    get:
+      tags: [Health]
+      summary: Health check de la API v1
+      responses:
+        '200':
+          description: API activa
+  /api/v1/auth/register:
+    post:
+      tags: [Auth]
+      summary: Registro de usuario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, email, password]
+              properties:
+                username:
+                  type: string
+                email:
+                  type: string
+                password:
+                  type: string
+                community_id:
+                  type: integer
+      responses:
+        '201':
+          description: Usuario registrado
+        '400':
+          description: Datos inválidos
+        '409':
+          description: Usuario ya existe
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login correcto
+        '400':
+          description: Datos inválidos
+        '401':
+          description: Credenciales incorrectas
+  /api/v1/users/me:
+    get:
+      tags: [Users]
+      summary: Perfil del usuario autenticado
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Perfil
+        '401':
+          description: No autenticado
+    delete:
+      tags: [Users]
+      summary: Eliminar usuario autenticado
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Usuario eliminado
+        '401':
+          description: No autenticado
+        '404':
+          description: Usuario no encontrado
+  /api/v1/users/{id}:
+    delete:
+      tags: [Users]
+      summary: Eliminar usuario por id (solo admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Usuario eliminado
+        '400':
+          description: ID inválido
+        '401':
+          description: No autenticado
+        '403':
+          description: Requiere rol admin
+        '404':
+          description: Usuario no encontrado
+  /api/v1/photos:
+    post:
+      tags: [Photos]
+      summary: Subir foto
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [title, theme_id, image]
+              properties:
+                title:
+                  type: string
+                  maxLength: 150
+                description:
+                  type: string
+                theme_id:
+                  type: integer
+                category_id:
+                  type: integer
+                image:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Foto creada
+        '400':
+          description: Datos inválidos o tema inactivo
+        '401':
+          description: No autenticado
+        '404':
+          description: Tema no encontrado
+        '409':
+          description: Ya existe una foto tuya para ese tema
+  /api/v1/photos/{id}:
+    delete:
+      tags: [Photos]
+      summary: Eliminar foto propia
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Foto eliminada
+        '400':
+          description: ID inválido
+        '401':
+          description: No autenticado
+        '403':
+          description: No tienes permiso para eliminar esta foto
+        '404':
+          description: La foto no existe
+  /api/v1/themes:
+    get:
+      tags: [Themes]
+      summary: Listar temas
+      responses:
+        '200':
+          description: Listado de temas
+    post:
+      tags: [Themes]
+      summary: Crear tema (solo admin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, start_date, end_date]
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                start_date:
+                  type: string
+                  format: date
+                end_date:
+                  type: string
+                  format: date
+                is_active:
+                  type: boolean
+                community_id:
+                  type: integer
+      responses:
+        '201':
+          description: Tema creado
+        '400':
+          description: Datos inválidos
+        '401':
+          description: No autenticado
+        '403':
+          description: Requiere rol admin
+  /api/v1/categories:
+    get:
+      tags: [Categories]
+      summary: Listar categorías
+      responses:
+        '200':
+          description: Listado de categorías
+  /api/v1/email/test:
+    post:
+      tags: [Email]
+      summary: Enviar email de prueba
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [to, subject]
+              properties:
+                to:
+                  type: string
+                subject:
+                  type: string
+                text:
+                  type: string
+                html:
+                  type: string
+      responses:
+        '200':
+          description: Email procesado
+        '400':
+          description: Datos inválidos
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
