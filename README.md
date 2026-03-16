@@ -169,6 +169,25 @@ npm run db:setup
 npm run dev
 ```
 
+## Setup rápido con un solo SQL (recomendado)
+
+Si quieres dejar la BD lista importando un único archivo:
+
+1. Crea una base de datos PostgreSQL vacía.
+2. Importa `sql/bootstrap.sql` en tu entorno de BD (DBeaver, pgAdmin, psql, Render, etc.).
+3. Configura `.env` con esa `DATABASE_URL`.
+4. Arranca backend con `npm run dev`.
+5. En frontend (`JMO-PI-FRONT`), crea `.env` con:
+
+```bash
+VITE_API_URL=http://localhost:3000/api/v1
+```
+
+El `bootstrap.sql` ya incluye:
+- schema completo
+- comunidades y categorías
+- un tema activo inicial (`Paisajes espectaculares`) para que la subida de foto funcione al instante.
+
 ## Scripts disponibles
 
 - `npm start`: arranque normal

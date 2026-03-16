@@ -4,6 +4,7 @@ import path from 'node:path';
 import pool from './pool.js';
 
 const rootDir = path.resolve(process.cwd());
+const bootstrapPath = path.join(rootDir, 'sql', 'bootstrap.sql');
 const schemaPath = path.join(rootDir, 'sql', 'schema.sql');
 const seedPath = path.join(rootDir, 'sql', 'seed.sql');
 
@@ -14,6 +15,15 @@ async function runSql(filePath) {
 
 async function main() {
   try {
+    try {
+      await fs.access(bootstrapPath);
+      await runSql(bootstrapPath);
+      console.log('DB bootstrap applied');
+      return;
+    } catch {
+      // Fallback para repos antiguos sin bootstrap.sql.
+    }
+
     await runSql(schemaPath);
     await runSql(seedPath);
     console.log('DB schema and seed applied');
