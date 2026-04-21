@@ -6,8 +6,11 @@ import {
   countPhotos,
   findActivePhotoByUserAndTheme,
   findCategoryById,
+  findPhotoRankInTheme,
+  findPhotoRankingContextById,
   findPhotoOwnerById,
   findPhotos,
+  findThemeLeaderboard,
   findPhotoWithDetailsById,
   findThemeById,
   insertPhoto,
@@ -71,7 +74,8 @@ export async function listPhotos(req, res) {
 
   const total = countResult.rows[0]?.total || 0;
 
-  const listResult = await findPhotos(whereClause, orderBy, values, limit, offset, index);
+  const currentUserId = req.user?.id || null;
+  const listResult = await findPhotos(whereClause, orderBy, values, limit, offset, index, currentUserId);
 
   res.json({
     data: listResult.rows,
@@ -169,6 +173,77 @@ export async function getPhotoById(req, res) {
   }
 
   res.json(result.rows[0]);
+}
+
+function parseRankingLimit(value) {
+  if (value === undefined || value === null || value === '') {
+    return 10;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  if (Number.isNaN(parsed) || parsed < 1) {
+    throw createError(400, 'VALIDATION_ERROR', 'limit inválido', []);
+  }
+
+  return Math.min(parsed, 50);
+}
+
+export async function getPhotoRanking(req, res) {
+  const photoId = Number.parseInt(req.params.id, 10);
+  if (!photoId || photoId < 1 || Number.isNaN(photoId)) {
+    throw createError(400, 'VALIDATION_ERROR', 'ID inválido', []);
+  }
+
+  const limit = parseRankingLimit(req.query.limit);
+
+  const contextResult = await findPhotoRankingContextById(photoId);
+  if (contextResult.rowCount === 0) {
+    throw createError(404, 'PHOTO_NOT_FOUND', 'La foto no existe o fue eliminada', []);
+  }
+
+  const context = contextResult.rows[0];
+
+  const rankResult = await findPhotoRankInTheme(photoId, context.theme_id);
+  if (rankResult.rowCount === 0) {
+    throw createError(404, 'PHOTO_NOT_FOUND', 'No hay ranking disponible para esta foto', []);
+  }
+
+  const leaderboardResult = await findThemeLeaderboard(context.theme_id, limit);
+  const ranking = rankResult.rows[0];
+
+  res.json({
+    photo: {
+      id: context.photo_id,
+      title: context.photo_title,
+      description: context.photo_description,
+      image_url: context.photo_image_url,
+      thumb_url: context.photo_thumb_url,
+      created_at: context.photo_created_at,
+      user_id: context.user_id,
+      author_display_name: context.author_display_name,
+      community_id: context.community_id,
+      community_name: context.community_name,
+      votes_count: context.votes_count,
+    },
+    theme: {
+      id: context.theme_id,
+      title: context.theme_title,
+      description: context.theme_description,
+      start_date: context.theme_start_date,
+      end_date: context.theme_end_date,
+      is_active: context.theme_is_active,
+      community_id: context.community_id,
+      community_name: context.community_name,
+    },
+    ranking: {
+      photo_id: ranking.photo_id,
+      rank_position: ranking.rank_position,
+      total_entries: ranking.total_entries,
+      votes_count: ranking.votes_count,
+      is_official_winner: ranking.is_official_winner,
+    },
+    leaderboard: leaderboardResult.rows,
+  });
 }
 
 export async function deletePhoto(req, res) {

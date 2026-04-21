@@ -5,7 +5,7 @@ export function countPhotos(whereClause, values) {
   return pool.query(`SELECT COUNT(*)::int AS total FROM photos ${whereClause}`, values);
 }
 
-export function findPhotos(whereClause, orderBy, values, limit, offset, placeholderIndex) {
+export function findPhotos(whereClause, orderBy, values, limit, offset, placeholderIndex, currentUserId = null) {
   return pool.query(
     `SELECT
        p.id,
@@ -24,15 +24,23 @@ export function findPhotos(whereClause, orderBy, values, limit, offset, placehol
        COALESCE(u.display_name, u.username) AS user_display_name,
        c.name AS community_name,
        cat.name AS category_name,
-       (SELECT COUNT(*)::int FROM votes v WHERE v.photo_id = p.id) AS votes_count
+       (SELECT COUNT(*)::int FROM votes v WHERE v.photo_id = p.id) AS votes_count,
+       CASE
+         WHEN $${placeholderIndex}::int IS NULL THEN false
+         ELSE EXISTS (
+           SELECT 1
+           FROM votes uv
+           WHERE uv.photo_id = p.id AND uv.user_id = $${placeholderIndex}
+         )
+       END AS has_user_voted
      FROM photos p
      JOIN users u ON u.id = p.user_id
      LEFT JOIN communities c ON c.id = p.community_id
      LEFT JOIN categories cat ON cat.id = p.category_id
      ${whereClause}
      ORDER BY ${orderBy}
-     LIMIT $${placeholderIndex} OFFSET $${placeholderIndex + 1}`,
-    [...values, limit, offset]
+     LIMIT $${placeholderIndex + 1} OFFSET $${placeholderIndex + 2}`,
+    [...values, currentUserId, limit, offset]
   );
 }
 
@@ -127,4 +135,109 @@ export function findPhotoOwnerById(photoId) {
 
 export function softDeletePhotoById(photoId) {
   return pool.query('UPDATE photos SET is_deleted = true WHERE id = $1', [photoId]);
+}
+
+export function findPhotoRankingContextById(photoId) {
+  return pool.query(
+    `SELECT
+       p.id AS photo_id,
+       p.title AS photo_title,
+       p.description AS photo_description,
+       p.image_url AS photo_image_url,
+       p.thumb_url AS photo_thumb_url,
+       p.created_at AS photo_created_at,
+       p.user_id,
+       COALESCE(u.display_name, u.username) AS author_display_name,
+       p.community_id,
+       comm.name AS community_name,
+       t.id AS theme_id,
+       t.title AS theme_title,
+       t.description AS theme_description,
+       t.start_date AS theme_start_date,
+       t.end_date AS theme_end_date,
+       t.is_active AS theme_is_active,
+       (SELECT COUNT(*)::int FROM votes v WHERE v.photo_id = p.id) AS votes_count
+     FROM photos p
+     JOIN users u ON u.id = p.user_id
+     JOIN themes t ON t.id = p.theme_id
+     LEFT JOIN communities comm ON comm.id = p.community_id
+     WHERE p.id = $1 AND p.is_deleted = false`,
+    [photoId]
+  );
+}
+
+export function findPhotoRankInTheme(photoId, themeId) {
+  return pool.query(
+    `WITH ranked AS (
+       SELECT
+         p.id AS photo_id,
+         (SELECT COUNT(*)::int FROM votes v WHERE v.photo_id = p.id) AS votes_count,
+         ROW_NUMBER() OVER (
+           PARTITION BY p.theme_id
+           ORDER BY
+             CASE WHEN w.photo_id = p.id THEN 0 ELSE 1 END,
+             (SELECT COUNT(*)::int FROM votes v2 WHERE v2.photo_id = p.id) DESC,
+             p.created_at ASC
+         ) AS rank_position,
+         (w.photo_id = p.id) AS is_official_winner
+       FROM photos p
+       LEFT JOIN winners w ON w.theme_id = p.theme_id
+       WHERE p.theme_id = $2 AND p.is_deleted = false
+     ),
+     totals AS (
+       SELECT COUNT(*)::int AS total_entries
+       FROM photos
+       WHERE theme_id = $2 AND is_deleted = false
+     )
+     SELECT
+       ranked.photo_id,
+       ranked.votes_count,
+       ranked.rank_position,
+       ranked.is_official_winner,
+       totals.total_entries
+     FROM ranked
+     CROSS JOIN totals
+     WHERE ranked.photo_id = $1`,
+    [photoId, themeId]
+  );
+}
+
+export function findThemeLeaderboard(themeId, limit) {
+  return pool.query(
+    `SELECT
+       ranked.photo_id,
+       ranked.photo_title,
+       ranked.image_url,
+       ranked.thumb_url,
+       ranked.user_id,
+       ranked.author_display_name,
+       ranked.votes_count,
+       ranked.rank_position,
+       ranked.is_official_winner
+     FROM (
+       SELECT
+         p.id AS photo_id,
+         p.title AS photo_title,
+         p.image_url,
+         p.thumb_url,
+         p.user_id,
+         COALESCE(u.display_name, u.username) AS author_display_name,
+         (SELECT COUNT(*)::int FROM votes v WHERE v.photo_id = p.id) AS votes_count,
+         ROW_NUMBER() OVER (
+           PARTITION BY p.theme_id
+           ORDER BY
+             CASE WHEN w.photo_id = p.id THEN 0 ELSE 1 END,
+             (SELECT COUNT(*)::int FROM votes v2 WHERE v2.photo_id = p.id) DESC,
+             p.created_at ASC
+         ) AS rank_position,
+         (w.photo_id = p.id) AS is_official_winner
+       FROM photos p
+       JOIN users u ON u.id = p.user_id
+       LEFT JOIN winners w ON w.theme_id = p.theme_id
+       WHERE p.theme_id = $1 AND p.is_deleted = false
+     ) ranked
+     ORDER BY ranked.rank_position ASC
+     LIMIT $2`,
+    [themeId, limit]
+  );
 }

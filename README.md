@@ -1,6 +1,27 @@
-# JMO-Backend
+# JMO-PI-BACK
 
 Backend API de SnapNation desarrollado con `Node.js + Express` para 2º DAW.
+
+## Requisitos
+- Node.js 18+ (recomendado 20 LTS)
+- npm 9+
+- Docker (para `db` y `mailhog` en local)
+
+## Importante (proyecto extraído de ZIP)
+Si el repositorio viene con `node_modules` incluido, no lo uses como base.
+Haz instalación limpia:
+
+```bash
+cd JMO-PI-BACK
+rm -rf node_modules coverage
+npm install
+```
+
+Validación de coherencia lockfile:
+
+```bash
+npm ci --dry-run
+```
 
 ## Resumen
 
@@ -11,7 +32,7 @@ Este proyecto implementa:
 - subida de imágenes con `multer` en almacenamiento local
 - envío de correo de prueba por SMTP (MailHog en local)
 - documentación Swagger/OpenAPI
-- eventos realtime con Socket.IO (`photo:created`)
+- eventos realtime con Socket.IO (`photo:created`, `vote:changed`, `comment:created`, `comment:deleted`)
 - test unitarios y m2m con cobertura
 - análisis de calidad en SonarQube
 - integración de Drizzle ORM (configuración, schema y uso en modelo de categorías)
@@ -56,7 +77,11 @@ Base URL: `http://localhost:3000/api/v1`
 ### Photos
 - `GET /photos`
 - `POST /photos` (auth + upload `image`)
+- `GET /photos/:id/ranking` (auth opcional)
 - `GET /photos/:id` (auth opcional)
+- `GET /photos/:id/comments` (auth opcional)
+- `POST /photos/:id/comments` (auth)
+- `DELETE /photos/:id/comments/:commentId` (auth)
 - `DELETE /photos/:id` (auth)
 
 ### Themes
@@ -74,6 +99,12 @@ Base URL: `http://localhost:3000/api/v1`
 ### Votes
 - `POST /votes` (auth)
 - `DELETE /votes` (auth)
+
+### Winners
+- `GET /winners`
+  - filtro opcional: `rank_limit` para limitar posiciones por tema (ej. `rank_limit=3`)
+  - filtro opcional: `theme_state=active|closed|all` (por defecto `closed`)
+  - filtro opcional: `official_only=true` para devolver solo ganadores oficiales
 
 ### Email
 - `POST /email/test`
@@ -114,8 +145,13 @@ Nombre de fichero:
 ## Realtime (WebSocket)
 
 - servidor Socket.IO inicializado en `index.js`
-- evento emitido al crear foto: `photo:created`
+- eventos emitidos:
+  - `photo:created`
+  - `vote:changed`
+  - `comment:created`
+  - `comment:deleted`
 - room opcional por comunidad: `subscribe:community`
+- room opcional por foto: `subscribe:photo`
 
 ## Base de datos
 
@@ -142,7 +178,7 @@ Nota de uso:
 
 1. Entrar en carpeta:
 ```bash
-cd JMO-Backend
+cd JMO-PI-BACK
 ```
 
 2. Levantar servicios:
@@ -167,6 +203,14 @@ npm run db:setup
 6. Ejecutar API:
 ```bash
 npm run dev
+```
+
+## Verificación final recomendada
+Tras instalación limpia:
+
+```bash
+npm run lint
+npm test
 ```
 
 ## Setup rápido con un solo SQL (recomendado)

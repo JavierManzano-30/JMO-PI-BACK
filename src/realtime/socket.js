@@ -23,6 +23,14 @@ export function initSocket(server, { origins = null, credentials = false } = {})
         socket.join(`community:${parsed}`);
       }
     });
+
+    // Suscripcion opcional para escuchar eventos de una foto concreta.
+    socket.on('subscribe:photo', (photoId) => {
+      const parsed = Number.parseInt(String(photoId), 10);
+      if (!Number.isNaN(parsed) && parsed > 0) {
+        socket.join(`photo:${parsed}`);
+      }
+    });
   });
 
   return ioInstance;
@@ -42,5 +50,53 @@ export function emitPhotoCreated(photo) {
   // Enviamos tambien a una sala de comunidad para facilitar filtrado en frontend.
   if (photo?.community_id) {
     ioInstance.to(`community:${photo.community_id}`).emit('photo:created', photo);
+  }
+}
+
+export function emitVoteChanged(payload) {
+  if (!ioInstance) {
+    return;
+  }
+
+  ioInstance.emit('vote:changed', payload);
+
+  if (payload?.photo_id) {
+    ioInstance.to(`photo:${payload.photo_id}`).emit('vote:changed', payload);
+  }
+
+  if (payload?.community_id) {
+    ioInstance.to(`community:${payload.community_id}`).emit('vote:changed', payload);
+  }
+}
+
+export function emitCommentCreated(payload) {
+  if (!ioInstance) {
+    return;
+  }
+
+  ioInstance.emit('comment:created', payload);
+
+  if (payload?.photo_id) {
+    ioInstance.to(`photo:${payload.photo_id}`).emit('comment:created', payload);
+  }
+
+  if (payload?.community_id) {
+    ioInstance.to(`community:${payload.community_id}`).emit('comment:created', payload);
+  }
+}
+
+export function emitCommentDeleted(payload) {
+  if (!ioInstance) {
+    return;
+  }
+
+  ioInstance.emit('comment:deleted', payload);
+
+  if (payload?.photo_id) {
+    ioInstance.to(`photo:${payload.photo_id}`).emit('comment:deleted', payload);
+  }
+
+  if (payload?.community_id) {
+    ioInstance.to(`community:${payload.community_id}`).emit('comment:deleted', payload);
   }
 }

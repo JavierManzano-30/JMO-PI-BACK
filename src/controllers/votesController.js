@@ -1,6 +1,7 @@
 // Controlador: recibe la peticion HTTP, valida entradas y construye la respuesta.
 import pool from '../db/pool.js';
 import { createError } from '../utils/errors.js';
+import { emitVoteChanged } from '../realtime/socket.js';
 
 export async function createVote(req, res) {
   const { photo_id } = req.body || {};
@@ -11,7 +12,7 @@ export async function createVote(req, res) {
   }
 
   const photoResult = await pool.query(
-    'SELECT id FROM photos WHERE id = $1 AND is_deleted = false',
+    'SELECT id, community_id FROM photos WHERE id = $1 AND is_deleted = false',
     [photoId]
   );
 
@@ -35,6 +36,18 @@ export async function createVote(req, res) {
     [photoId, req.user.id]
   );
 
+  const voteCountResult = await pool.query(
+    'SELECT COUNT(*)::int AS total_votes FROM votes WHERE photo_id = $1',
+    [photoId]
+  );
+
+  emitVoteChanged({
+    photo_id: photoId,
+    community_id: photoResult.rows[0].community_id,
+    total_votes: voteCountResult.rows[0]?.total_votes || 0,
+    action: 'created',
+  });
+
   res.status(201).json(insertResult.rows[0]);
 }
 
@@ -54,6 +67,22 @@ export async function deleteVote(req, res) {
   if (deleteResult.rowCount === 0) {
     throw createError(404, 'VOTE_NOT_FOUND', 'Voto no encontrado', []);
   }
+
+  const photoResult = await pool.query(
+    'SELECT id, community_id FROM photos WHERE id = $1 AND is_deleted = false',
+    [photoId]
+  );
+  const voteCountResult = await pool.query(
+    'SELECT COUNT(*)::int AS total_votes FROM votes WHERE photo_id = $1',
+    [photoId]
+  );
+
+  emitVoteChanged({
+    photo_id: photoId,
+    community_id: photoResult.rows[0]?.community_id || null,
+    total_votes: voteCountResult.rows[0]?.total_votes || 0,
+    action: 'deleted',
+  });
 
   res.status(204).send();
 }

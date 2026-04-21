@@ -2,11 +2,16 @@
 import { jest } from '@jest/globals';
 
 const queryMock = jest.fn();
+const emitVoteChangedMock = jest.fn();
 
 jest.unstable_mockModule('../../../src/db/pool.js', () => ({
   default: {
     query: queryMock,
   },
+}));
+
+jest.unstable_mockModule('../../../src/realtime/socket.js', () => ({
+  emitVoteChanged: emitVoteChangedMock,
 }));
 
 const { createVote, deleteVote } = await import('../../../src/controllers/votesController.js');
@@ -24,6 +29,7 @@ function createRes() {
 describe('votes controller', () => {
   beforeEach(() => {
     queryMock.mockReset();
+    emitVoteChangedMock.mockReset();
   });
 
   test('createVote valida photo_id', async () => {
@@ -55,10 +61,13 @@ describe('votes controller', () => {
 
   test('createVote registra voto', async () => {
     queryMock
-      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 3 }] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 3, community_id: 2 }] })
       .mockResolvedValueOnce({ rowCount: 0, rows: [] })
       .mockResolvedValueOnce({
         rows: [{ id: 20, photo_id: 3, user_id: 2, created_at: '2026-02-01' }],
+      })
+      .mockResolvedValueOnce({
+        rows: [{ total_votes: 7 }],
       });
     const res = createRes();
 
@@ -66,6 +75,12 @@ describe('votes controller', () => {
 
     expect(res.status).toHaveBeenCalledWith(201);
     expect(res.json).toHaveBeenCalledWith({ id: 20, photo_id: 3, user_id: 2, created_at: '2026-02-01' });
+    expect(emitVoteChangedMock).toHaveBeenCalledWith({
+      photo_id: 3,
+      community_id: 2,
+      total_votes: 7,
+      action: 'created',
+    });
   });
 
   test('deleteVote valida photo_id', async () => {
@@ -85,12 +100,21 @@ describe('votes controller', () => {
   });
 
   test('deleteVote elimina voto', async () => {
-    queryMock.mockResolvedValue({ rowCount: 1 });
+    queryMock
+      .mockResolvedValueOnce({ rowCount: 1 })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 3, community_id: 5 }] })
+      .mockResolvedValueOnce({ rows: [{ total_votes: 4 }] });
     const res = createRes();
 
     await deleteVote({ body: { photo_id: 3 }, user: { id: 1 } }, res);
 
     expect(res.status).toHaveBeenCalledWith(204);
     expect(res.send).toHaveBeenCalled();
+    expect(emitVoteChangedMock).toHaveBeenCalledWith({
+      photo_id: 3,
+      community_id: 5,
+      total_votes: 4,
+      action: 'deleted',
+    });
   });
 });

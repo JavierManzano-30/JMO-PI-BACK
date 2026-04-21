@@ -1,9 +1,12 @@
 // Capa de base de datos: conexion y scripts auxiliares para SQL.
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import pool from './pool.js';
 
-const rootDir = path.resolve(process.cwd());
+const currentFilePath = fileURLToPath(import.meta.url);
+const currentDirPath = path.dirname(currentFilePath);
+const rootDir = path.resolve(currentDirPath, '../..');
 const bootstrapPath = path.join(rootDir, 'sql', 'bootstrap.sql');
 const schemaPath = path.join(rootDir, 'sql', 'schema.sql');
 const seedPath = path.join(rootDir, 'sql', 'seed.sql');

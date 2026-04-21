@@ -86,6 +86,15 @@ export const votes = pgTable(
   })
 );
 
+export const comments = pgTable('comments', {
+  id: serial('id').primaryKey(),
+  photoId: integer('photo_id').notNull().references(() => photos.id, { onDelete: 'cascade' }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  content: varchar('content', { length: 1000 }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const moderation = pgTable('moderation', {
   id: serial('id').primaryKey(),
   photoId: integer('photo_id').notNull().references(() => photos.id, { onDelete: 'cascade' }),

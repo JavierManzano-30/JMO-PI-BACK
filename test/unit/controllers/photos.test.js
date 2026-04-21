@@ -7,6 +7,9 @@ const findThemeByIdMock = jest.fn();
 const findActivePhotoByUserAndThemeMock = jest.fn();
 const findCategoryByIdMock = jest.fn();
 const insertPhotoMock = jest.fn();
+const findPhotoRankingContextByIdMock = jest.fn();
+const findPhotoRankInThemeMock = jest.fn();
+const findThemeLeaderboardMock = jest.fn();
 const findPhotoWithDetailsByIdMock = jest.fn();
 const findPhotoOwnerByIdMock = jest.fn();
 const softDeletePhotoByIdMock = jest.fn();
@@ -19,6 +22,9 @@ jest.unstable_mockModule('../../../src/models/photosModel.js', () => ({
   findActivePhotoByUserAndTheme: findActivePhotoByUserAndThemeMock,
   findCategoryById: findCategoryByIdMock,
   insertPhoto: insertPhotoMock,
+  findPhotoRankingContextById: findPhotoRankingContextByIdMock,
+  findPhotoRankInTheme: findPhotoRankInThemeMock,
+  findThemeLeaderboard: findThemeLeaderboardMock,
   findPhotoWithDetailsById: findPhotoWithDetailsByIdMock,
   findPhotoOwnerById: findPhotoOwnerByIdMock,
   softDeletePhotoById: softDeletePhotoByIdMock,
@@ -32,6 +38,7 @@ const {
   listPhotos,
   createPhoto,
   getPhotoById,
+  getPhotoRanking,
   deletePhoto,
 } = await import('../../../src/controllers/photosController.js');
 
@@ -53,6 +60,9 @@ describe('photos controller', () => {
     findActivePhotoByUserAndThemeMock.mockReset();
     findCategoryByIdMock.mockReset();
     insertPhotoMock.mockReset();
+    findPhotoRankingContextByIdMock.mockReset();
+    findPhotoRankInThemeMock.mockReset();
+    findThemeLeaderboardMock.mockReset();
     findPhotoWithDetailsByIdMock.mockReset();
     findPhotoOwnerByIdMock.mockReset();
     softDeletePhotoByIdMock.mockReset();
@@ -260,5 +270,66 @@ describe('photos controller', () => {
 
     expect(res.status).toHaveBeenCalledWith(204);
     expect(res.send).toHaveBeenCalled();
+  });
+
+  test('getPhotoRanking valida id y devuelve ranking', async () => {
+    await expect(getPhotoRanking({ params: { id: 'bad' }, query: {} }, createRes())).rejects.toMatchObject({
+      status: 400,
+      code: 'VALIDATION_ERROR',
+    });
+
+    findPhotoRankingContextByIdMock.mockResolvedValueOnce({ rowCount: 0, rows: [] });
+    await expect(getPhotoRanking({ params: { id: '8' }, query: {} }, createRes())).rejects.toMatchObject({
+      status: 404,
+      code: 'PHOTO_NOT_FOUND',
+    });
+
+    findPhotoRankingContextByIdMock.mockResolvedValueOnce({
+      rowCount: 1,
+      rows: [{
+        photo_id: 8,
+        photo_title: 'Foto 8',
+        photo_description: 'desc',
+        photo_image_url: 'http://localhost/uploads/8.jpg',
+        photo_thumb_url: 'http://localhost/uploads/8-thumb.jpg',
+        photo_created_at: '2026-01-01',
+        user_id: 2,
+        author_display_name: 'Ana',
+        community_id: 4,
+        community_name: 'Madrid',
+        theme_id: 11,
+        theme_title: 'Nocturna',
+        theme_description: 'Luces',
+        theme_start_date: '2026-01-01',
+        theme_end_date: '2026-01-07',
+        theme_is_active: false,
+        votes_count: 22,
+      }],
+    });
+    findPhotoRankInThemeMock.mockResolvedValueOnce({
+      rowCount: 1,
+      rows: [{
+        photo_id: 8,
+        rank_position: 2,
+        total_entries: 16,
+        votes_count: 22,
+        is_official_winner: false,
+      }],
+    });
+    findThemeLeaderboardMock.mockResolvedValueOnce({
+      rows: [{ photo_id: 7, rank_position: 1, votes_count: 30 }],
+    });
+
+    const res = createRes();
+    await getPhotoRanking({ params: { id: '8' }, query: { limit: '5' } }, res);
+
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      ranking: expect.objectContaining({
+        photo_id: 8,
+        rank_position: 2,
+        total_entries: 16,
+      }),
+      leaderboard: [{ photo_id: 7, rank_position: 1, votes_count: 30 }],
+    }));
   });
 });

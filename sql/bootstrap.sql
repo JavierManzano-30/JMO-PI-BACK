@@ -60,6 +60,15 @@ CREATE TABLE IF NOT EXISTS votes (
   CONSTRAINT uq_votes_user_photo UNIQUE (user_id, photo_id)
 );
 
+CREATE TABLE IF NOT EXISTS comments (
+  id SERIAL PRIMARY KEY,
+  photo_id INTEGER NOT NULL REFERENCES photos(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  content VARCHAR(1000) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS moderation (
   id SERIAL PRIMARY KEY,
   photo_id INTEGER NOT NULL REFERENCES photos(id) ON DELETE CASCADE,
@@ -83,6 +92,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_photos_user_theme_active
   ON photos(user_id, theme_id)
   WHERE is_deleted = false;
 CREATE INDEX IF NOT EXISTS idx_votes_photo_id ON votes(photo_id);
+CREATE INDEX IF NOT EXISTS idx_comments_photo_id ON comments(photo_id);
+CREATE INDEX IF NOT EXISTS idx_comments_user_id ON comments(user_id);
 CREATE INDEX IF NOT EXISTS idx_themes_community_id ON themes(community_id);
 CREATE INDEX IF NOT EXISTS idx_themes_is_active ON themes(is_active);
 

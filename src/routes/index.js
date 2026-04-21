@@ -8,6 +8,7 @@ import communityRoutes from './communities.js';
 import categoryRoutes from './categories.js';
 import voteRoutes from './votes.js';
 import emailRoutes from './email.js';
+import winnersRoutes from './winners.js';
 
 const router = Router();
 
@@ -19,5 +20,6 @@ router.use('/communities', communityRoutes);
 router.use('/categories', categoryRoutes);
 router.use('/votes', voteRoutes);
 router.use('/email', emailRoutes);
+router.use('/winners', winnersRoutes);
 
 export default router;
