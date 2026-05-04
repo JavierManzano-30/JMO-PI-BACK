@@ -16,13 +16,29 @@ async function runSql(filePath) {
   await pool.query(sql);
 }
 
-async function main() {
+async function hasBaseSchema() {
+  const result = await pool.query(
+    `SELECT to_regclass('public.communities') IS NOT NULL AS communities_exists,
+            to_regclass('public.themes') IS NOT NULL AS themes_exists,
+            to_regclass('public.photos') IS NOT NULL AS photos_exists`
+  );
+
+  const row = result.rows[0] || {};
+  return Boolean(row.communities_exists && row.themes_exists && row.photos_exists);
+}
+
+export async function ensureDatabaseSetup({ force = false } = {}) {
+  const ready = force ? false : await hasBaseSchema();
+  if (ready) {
+    return false;
+  }
+
   try {
     try {
       await fs.access(bootstrapPath);
       await runSql(bootstrapPath);
       console.log('DB bootstrap applied');
-      return;
+      return true;
     } catch {
       // Fallback para repos antiguos sin bootstrap.sql.
     }
@@ -30,12 +46,24 @@ async function main() {
     await runSql(schemaPath);
     await runSql(seedPath);
     console.log('DB schema and seed applied');
+    return true;
+  } catch (error) {
+    console.error('DB setup failed:', error);
+    throw error;
+  }
+}
+
+async function main() {
+  try {
+    await ensureDatabaseSetup({ force: true });
   } finally {
     await pool.end();
   }
 }
 
-main().catch((error) => {
-  console.error('DB setup failed:', error);
-  process.exit(1);
-});
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch((error) => {
+    console.error('DB setup failed:', error);
+    process.exit(1);
+  });
+}

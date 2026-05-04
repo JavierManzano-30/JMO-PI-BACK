@@ -22,8 +22,8 @@ export default (app) => {
 
   app.use(
     cors({
-      origin: config.cors.origins && config.cors.origins.length > 0 ? config.cors.origins : true,
-      credentials: config.cors.credentials,
+      origin: true,
+      credentials: true,
       allowedHeaders: ['Content-Type', 'Authorization'],
     })
   );

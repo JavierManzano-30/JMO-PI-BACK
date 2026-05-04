@@ -99,9 +99,25 @@ CREATE INDEX IF NOT EXISTS idx_themes_is_active ON themes(is_active);
 
 INSERT INTO communities (code, name)
 VALUES
-  ('MADRID01', 'Comunidad de Madrid'),
+  ('ANDALUCIA01', 'Andalucía'),
+  ('ARAGON01', 'Aragón'),
+  ('ASTURIAS01', 'Principado de Asturias'),
+  ('BALEARES01', 'Illes Balears'),
+  ('CANARIAS01', 'Canarias'),
+  ('CANTABRIA01', 'Cantabria'),
+  ('CASTILLA_LA_MANCHA01', 'Castilla-La Mancha'),
+  ('CASTILLA_Y_LEON01', 'Castilla y León'),
   ('CATALUNA01', 'Cataluña'),
-  ('ANDALUCIA01', 'Andalucía')
+  ('CEUTA01', 'Ceuta'),
+  ('COM_VALENCIANA01', 'Comunitat Valenciana'),
+  ('EXTREMADURA01', 'Extremadura'),
+  ('GALICIA01', 'Galicia'),
+  ('LA_RIOJA01', 'La Rioja'),
+  ('MADRID01', 'Comunidad de Madrid'),
+  ('MELILLA01', 'Melilla'),
+  ('MURCIA01', 'Región de Murcia'),
+  ('NAVARRA01', 'Comunidad Foral de Navarra'),
+  ('PAIS_VASCO01', 'País Vasco')
 ON CONFLICT (code) DO NOTHING;
 
 INSERT INTO categories (slug, name)

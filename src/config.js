@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 // Carga siempre el .env del backend aunque el proceso se lance desde otra carpeta.
 const currentFilePath = fileURLToPath(import.meta.url);
 const currentDirPath = path.dirname(currentFilePath);
-dotenv.config({ path: path.resolve(currentDirPath, '../.env') });
+dotenv.config({ path: path.resolve(currentDirPath, '../.env'), override: true });
 
 // Convierte una variable de entorno en numero con valor por defecto.
 function toNumber(value, fallback) {
