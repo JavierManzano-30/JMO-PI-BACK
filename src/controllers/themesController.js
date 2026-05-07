@@ -3,6 +3,50 @@ import pool from '../db/pool.js';
 import { createError } from '../utils/errors.js';
 import { buildMeta, parsePagination } from '../utils/pagination.js';
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+function parseDateOnly(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return null;
+  }
+
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  const isSameDate =
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day;
+
+  return isSameDate ? date : null;
+}
+
+function validateWeeklyContestRange(startDateValue, endDateValue) {
+  const startDate = parseDateOnly(startDateValue);
+  const endDate = parseDateOnly(endDateValue);
+
+  if (!startDate || !endDate) {
+    throw createError(400, 'VALIDATION_ERROR', 'Fechas inválidas', []);
+  }
+
+  const durationDays = Math.round((endDate.getTime() - startDate.getTime()) / MS_PER_DAY);
+  if (startDate.getUTCDay() !== 1 || endDate.getUTCDay() !== 0 || durationDays !== 6) {
+    throw createError(
+      400,
+      'VALIDATION_ERROR',
+      'Los concursos deben empezar en lunes y terminar el domingo de la misma semana',
+      []
+    );
+  }
+}
+
+function parseFilterInt(value, label) {
+  const parsed = Number.parseInt(value, 10);
+  if (Number.isNaN(parsed) || parsed < 1) {
+    throw createError(400, 'VALIDATION_ERROR', `${label} inválido`, []);
+  }
+  return parsed;
+}
+
 export async function listThemes(req, res) {
   const { page, limit, offset } = parsePagination(req.query);
   const filters = [];
@@ -15,17 +59,13 @@ export async function listThemes(req, res) {
     index += 1;
   };
 
-  const parseFilterInt = (value, label) => {
-    const parsed = Number.parseInt(value, 10);
-    if (Number.isNaN(parsed) || parsed < 1) {
-      throw createError(400, 'VALIDATION_ERROR', `${label} inválido`, []);
-    }
-    return parsed;
-  };
-
   if (req.query.is_active !== undefined) {
     const isActive = req.query.is_active === 'true' || req.query.is_active === true;
-    addFilter('is_active = ?', isActive);
+    if (isActive) {
+      filters.push('is_active = true AND start_date <= CURRENT_DATE AND end_date >= CURRENT_DATE');
+    } else {
+      filters.push('(is_active = false OR start_date > CURRENT_DATE OR end_date < CURRENT_DATE)');
+    }
   }
   if (req.query.community_id) {
     addFilter('community_id = ?', parseFilterInt(req.query.community_id, 'community_id'));
@@ -41,10 +81,17 @@ export async function listThemes(req, res) {
   const total = countResult.rows[0]?.total || 0;
 
   const listResult = await pool.query(
-    `SELECT id, title, description, start_date, end_date, is_active, created_at
+    `SELECT
+       id,
+       title,
+       description,
+       start_date,
+       end_date,
+       (is_active = true AND start_date <= CURRENT_DATE AND end_date >= CURRENT_DATE) AS is_active,
+       created_at
      FROM themes
      ${whereClause}
-     ORDER BY created_at DESC
+     ORDER BY start_date DESC, created_at DESC
      LIMIT $${index} OFFSET $${index + 1}`,
     [...values, limit, offset]
   );
@@ -62,9 +109,7 @@ export async function createTheme(req, res) {
     throw createError(400, 'VALIDATION_ERROR', 'Título inválido', []);
   }
 
-  if (!start_date || !end_date) {
-    throw createError(400, 'VALIDATION_ERROR', 'Fechas inválidas', []);
-  }
+  validateWeeklyContestRange(start_date, end_date);
 
   const communityId = community_id ? Number.parseInt(community_id, 10) : null;
   if (community_id && (Number.isNaN(communityId) || communityId < 1)) {
@@ -77,11 +122,27 @@ export async function createTheme(req, res) {
     }
   }
 
+  const shouldBeActive = is_active !== undefined ? Boolean(is_active) : true;
+  if (shouldBeActive) {
+    const weeklyCount = await pool.query(
+      `SELECT COUNT(*)::int AS total
+       FROM themes
+       WHERE is_active = true
+         AND start_date = $1
+         AND end_date = $2`,
+      [start_date, end_date]
+    );
+
+    if ((weeklyCount.rows[0]?.total || 0) >= 2) {
+      throw createError(409, 'WEEKLY_CONTEST_LIMIT', 'Ya existen dos concursos activos para esa semana', []);
+    }
+  }
+
   const insertResult = await pool.query(
     `INSERT INTO themes (community_id, title, description, start_date, end_date, is_active)
      VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING id, title, description, start_date, end_date, is_active, created_at`,
-    [communityId, title, description || null, start_date, end_date, is_active !== undefined ? Boolean(is_active) : true]
+    [communityId, title, description || null, start_date, end_date, shouldBeActive]
   );
 
   res.status(201).json(insertResult.rows[0]);
@@ -94,7 +155,16 @@ export async function getThemeById(req, res) {
   }
 
   const result = await pool.query(
-    'SELECT id, title, description, start_date, end_date, is_active, created_at FROM themes WHERE id = $1',
+    `SELECT
+       id,
+       title,
+       description,
+       start_date,
+       end_date,
+       (is_active = true AND start_date <= CURRENT_DATE AND end_date >= CURRENT_DATE) AS is_active,
+       created_at
+     FROM themes
+     WHERE id = $1`,
     [themeId]
   );
 

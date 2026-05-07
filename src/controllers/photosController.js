@@ -17,6 +17,9 @@ import {
   softDeletePhotoById,
 } from '../models/photosModel.js';
 
+const PHOTO_TITLE_MAX_LENGTH = 80;
+const PHOTO_DESCRIPTION_MAX_LENGTH = 500;
+
 export async function listPhotos(req, res) {
   const { page, limit, offset } = parsePagination(req.query);
   const filters = ['is_deleted = false'];
@@ -84,10 +87,16 @@ export async function listPhotos(req, res) {
 }
 
 export async function createPhoto(req, res) {
-  const { title, description, theme_id, category_id } = req.body || {};
+  const { title: rawTitle, description: rawDescription, theme_id, category_id } = req.body || {};
+  const title = typeof rawTitle === 'string' ? rawTitle.trim() : '';
+  const description = typeof rawDescription === 'string' ? rawDescription.trim() : '';
 
-  if (!title || title.length < 1 || title.length > 150) {
+  if (!title || title.length > PHOTO_TITLE_MAX_LENGTH) {
     throw createError(400, 'VALIDATION_ERROR', 'Título inválido', []);
+  }
+
+  if (description.length > PHOTO_DESCRIPTION_MAX_LENGTH) {
+    throw createError(400, 'VALIDATION_ERROR', 'Descripción inválida', []);
   }
 
   const themeId = Number.parseInt(theme_id, 10);

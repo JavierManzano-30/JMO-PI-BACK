@@ -47,11 +47,19 @@ describe('themes controller', () => {
 
   test('createTheme valida titulo y fechas', async () => {
     await expect(
-      createTheme({ body: { title: '', start_date: '2026-01-01', end_date: '2026-01-07' } }, { status: jest.fn() })
+      createTheme({ body: { title: '', start_date: '2026-01-05', end_date: '2026-01-11' } }, { status: jest.fn() })
     ).rejects.toMatchObject({ status: 400, code: 'VALIDATION_ERROR' });
 
     await expect(
       createTheme({ body: { title: 'Valido' } }, { status: jest.fn() })
+    ).rejects.toMatchObject({ status: 400, code: 'VALIDATION_ERROR' });
+
+    await expect(
+      createTheme({ body: { title: 'Valido', start_date: '2026-01-06', end_date: '2026-01-12' } }, { status: jest.fn() })
+    ).rejects.toMatchObject({ status: 400, code: 'VALIDATION_ERROR' });
+
+    await expect(
+      createTheme({ body: { title: 'Valido', start_date: '2026-01-05', end_date: '2026-01-12' } }, { status: jest.fn() })
     ).rejects.toMatchObject({ status: 400, code: 'VALIDATION_ERROR' });
   });
 
@@ -63,8 +71,8 @@ describe('themes controller', () => {
         {
           body: {
             title: 'Semana 1',
-            start_date: '2026-01-01',
-            end_date: '2026-01-07',
+            start_date: '2026-01-05',
+            end_date: '2026-01-11',
             community_id: '4',
           },
         },
@@ -76,6 +84,7 @@ describe('themes controller', () => {
   test('createTheme crea tema', async () => {
     queryMock
       .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 3 }] })
+      .mockResolvedValueOnce({ rows: [{ total: 0 }] })
       .mockResolvedValueOnce({
         rows: [{ id: 11, title: 'Semana 2', description: null, is_active: true, created_at: '2026-02-01' }],
       });
@@ -91,8 +100,8 @@ describe('themes controller', () => {
       {
         body: {
           title: 'Semana 2',
-          start_date: '2026-02-01',
-          end_date: '2026-02-07',
+          start_date: '2026-02-02',
+          end_date: '2026-02-08',
           is_active: true,
           community_id: '3',
         },
@@ -108,6 +117,24 @@ describe('themes controller', () => {
       is_active: true,
       created_at: '2026-02-01',
     });
+  });
+
+  test('createTheme limita a dos concursos activos por semana', async () => {
+    queryMock.mockResolvedValueOnce({ rows: [{ total: 2 }] });
+
+    await expect(
+      createTheme(
+        {
+          body: {
+            title: 'Tercer concurso',
+            start_date: '2026-02-02',
+            end_date: '2026-02-08',
+            is_active: true,
+          },
+        },
+        { status: jest.fn() }
+      )
+    ).rejects.toMatchObject({ status: 409, code: 'WEEKLY_CONTEST_LIMIT' });
   });
 
   test('getThemeById valida id y 404', async () => {

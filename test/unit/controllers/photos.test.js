@@ -101,6 +101,17 @@ describe('photos controller', () => {
     });
 
     await expect(
+      createPhoto({ body: { title: 'T'.repeat(81), theme_id: '2' }, user: { id: 1 } }, createRes())
+    ).rejects.toMatchObject({ status: 400, code: 'VALIDATION_ERROR' });
+
+    await expect(
+      createPhoto({
+        body: { title: 'ok', description: 'D'.repeat(501), theme_id: '2' },
+        user: { id: 1 },
+      }, createRes())
+    ).rejects.toMatchObject({ status: 400, code: 'VALIDATION_ERROR' });
+
+    await expect(
       createPhoto({ body: { title: 'ok', theme_id: 'bad' }, user: { id: 1 } }, createRes())
     ).rejects.toMatchObject({ status: 400, code: 'VALIDATION_ERROR' });
 
@@ -217,6 +228,38 @@ describe('photos controller', () => {
       title: 'ok',
       image_url: 'http://localhost:3000/uploads/a.png',
     });
+  });
+
+  test('createPhoto normaliza título y descripción antes de insertar', async () => {
+    findThemeByIdMock.mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 2, community_id: 3, is_active: true }] });
+    findActivePhotoByUserAndThemeMock.mockResolvedValueOnce({ rowCount: 0, rows: [] });
+    insertPhotoMock.mockResolvedValueOnce({
+      rows: [{ id: 90, title: 'Título limpio', description: 'Descripción limpia' }],
+    });
+    const res = createRes();
+
+    await createPhoto(
+      {
+        body: {
+          title: '  Título limpio  ',
+          description: '  Descripción limpia  ',
+          theme_id: '2',
+        },
+        user: { id: 1 },
+        file: { filename: 'a.png' },
+        protocol: 'http',
+        get: (name) => (name === 'host' ? 'localhost:3000' : ''),
+      },
+      res
+    );
+
+    expect(insertPhotoMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Título limpio',
+        description: 'Descripción limpia',
+      })
+    );
+    expect(res.status).toHaveBeenCalledWith(201);
   });
 
   test('getPhotoById valida id, 404 y success', async () => {

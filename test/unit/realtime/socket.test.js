@@ -15,7 +15,14 @@ jest.unstable_mockModule('socket.io', () => ({
   Server: serverCtorMock,
 }));
 
-const { emitPhotoCreated, getSocket, initSocket } = await import('../../../src/realtime/socket.js');
+const {
+  emitCommentCreated,
+  emitCommentDeleted,
+  emitPhotoCreated,
+  emitVoteChanged,
+  getSocket,
+  initSocket,
+} = await import('../../../src/realtime/socket.js');
 
 describe('realtime socket', () => {
   beforeEach(() => {
@@ -62,5 +69,41 @@ describe('realtime socket', () => {
     expect(() => emitPhotoCreated({ id: 1, title: 'Solo global' })).not.toThrow();
     expect(emitMock).toHaveBeenCalledWith('photo:created', { id: 1, title: 'Solo global' });
     expect(toMock).not.toHaveBeenCalled();
+  });
+
+  test('emitVoteChanged publica global, por foto y por comunidad', () => {
+    initSocket({}, { origins: null, credentials: false });
+    const payload = { photo_id: 4, community_id: 2, total_votes: 9, action: 'created' };
+
+    emitVoteChanged(payload);
+
+    expect(emitMock).toHaveBeenCalledWith('vote:changed', payload);
+    expect(toMock).toHaveBeenCalledWith('photo:4');
+    expect(toMock).toHaveBeenCalledWith('community:2');
+    expect(toEmitMock).toHaveBeenCalledWith('vote:changed', payload);
+  });
+
+  test('emitCommentCreated publica global, por foto y por comunidad', () => {
+    initSocket({}, { origins: null, credentials: false });
+    const payload = { photo_id: 4, community_id: 2, comment: { id: 8, content: 'Texto' } };
+
+    emitCommentCreated(payload);
+
+    expect(emitMock).toHaveBeenCalledWith('comment:created', payload);
+    expect(toMock).toHaveBeenCalledWith('photo:4');
+    expect(toMock).toHaveBeenCalledWith('community:2');
+    expect(toEmitMock).toHaveBeenCalledWith('comment:created', payload);
+  });
+
+  test('emitCommentDeleted publica global, por foto y por comunidad', () => {
+    initSocket({}, { origins: null, credentials: false });
+    const payload = { photo_id: 4, community_id: 2, comment_id: 8 };
+
+    emitCommentDeleted(payload);
+
+    expect(emitMock).toHaveBeenCalledWith('comment:deleted', payload);
+    expect(toMock).toHaveBeenCalledWith('photo:4');
+    expect(toMock).toHaveBeenCalledWith('community:2');
+    expect(toEmitMock).toHaveBeenCalledWith('comment:deleted', payload);
   });
 });

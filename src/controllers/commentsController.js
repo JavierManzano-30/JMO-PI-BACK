@@ -10,6 +10,8 @@ import {
 } from '../models/commentsModel.js';
 import { emitCommentCreated, emitCommentDeleted } from '../realtime/socket.js';
 
+const COMMENT_MAX_LENGTH = 280;
+
 function parsePhotoId(value) {
   const parsed = Number.parseInt(value, 10);
   if (Number.isNaN(parsed) || parsed < 1) {
@@ -62,8 +64,8 @@ export async function createPhotoComment(req, res) {
   const photoId = parsePhotoId(req.params.id);
   const content = typeof req.body?.content === 'string' ? req.body.content.trim() : '';
 
-  if (!content || content.length > 1000) {
-    throw createError(400, 'VALIDATION_ERROR', 'El comentario debe tener entre 1 y 1000 caracteres', []);
+  if (!content || content.length > COMMENT_MAX_LENGTH) {
+    throw createError(400, 'VALIDATION_ERROR', 'El comentario debe tener entre 1 y 280 caracteres', []);
   }
 
   const photoResult = await findPhotoForComments(photoId);

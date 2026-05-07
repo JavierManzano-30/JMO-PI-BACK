@@ -10,6 +10,16 @@ function createRes() {
 }
 
 describe('errorHandler middleware', () => {
+  let consoleErrorSpy;
+
+  beforeEach(() => {
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
+  });
+
   test('mapea LIMIT_FILE_SIZE a 413', () => {
     const err = { code: 'LIMIT_FILE_SIZE' };
     const res = createRes();

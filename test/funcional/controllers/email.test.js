@@ -15,10 +15,17 @@ const { default: app } = await import('../../../src/app.js');
 const { resetMailer } = await import('../../../src/services/email.js');
 
 describe('Email controller', () => {
+  let consoleErrorSpy;
+
   beforeEach(() => {
     resetMailer();
     createTransportMock.mockClear();
     sendMailMock.mockReset();
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
   });
 
   test('POST /api/v1/email/test valida campos obligatorios', async () => {

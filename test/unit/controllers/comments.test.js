@@ -96,6 +96,46 @@ describe('comments controller', () => {
     });
   });
 
+  test('createPhotoComment rechaza comentarios de más de 280 caracteres', async () => {
+    await expect(
+      createPhotoComment(
+        {
+          params: { id: '3' },
+          body: { content: 'C'.repeat(281) },
+          user: { id: 9, username: 'ana', display_name: 'Ana', avatar_url: null },
+        },
+        createRes()
+      )
+    ).rejects.toMatchObject({
+      status: 400,
+      code: 'VALIDATION_ERROR',
+    });
+
+    expect(findPhotoForCommentsMock).not.toHaveBeenCalled();
+    expect(insertCommentMock).not.toHaveBeenCalled();
+  });
+
+  test('createPhotoComment acepta exactamente 280 caracteres', async () => {
+    const content = 'C'.repeat(280);
+    findPhotoForCommentsMock.mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 3, community_id: 7, is_deleted: false }] });
+    insertCommentMock.mockResolvedValueOnce({
+      rows: [{ id: 56, photo_id: 3, user_id: 9, content, created_at: '2026-01-01', updated_at: '2026-01-01' }],
+    });
+    const res = createRes();
+
+    await createPhotoComment(
+      {
+        params: { id: '3' },
+        body: { content },
+        user: { id: 9, username: 'ana', display_name: 'Ana', avatar_url: null },
+      },
+      res
+    );
+
+    expect(insertCommentMock).toHaveBeenCalledWith({ photoId: 3, userId: 9, content });
+    expect(res.status).toHaveBeenCalledWith(201);
+  });
+
   test('listPhotoComments devuelve can_delete para autor', async () => {
     findPhotoForCommentsMock.mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 3, is_deleted: false }] });
     countCommentsByPhotoIdMock.mockResolvedValueOnce({ rows: [{ total: 1 }] });
