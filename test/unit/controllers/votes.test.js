@@ -83,6 +83,32 @@ describe('votes controller', () => {
     });
   });
 
+  test('createVote ignora user_id enviado por el cliente y usa el usuario autenticado', async () => {
+    queryMock
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 3, community_id: 2 }] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({
+        rows: [{ id: 21, photo_id: 3, user_id: 2, created_at: '2026-02-01' }],
+      })
+      .mockResolvedValueOnce({
+        rows: [{ total_votes: 8 }],
+      });
+    const res = createRes();
+
+    await createVote({ body: { photo_id: '3', user_id: 999 }, user: { id: 2 } }, res);
+
+    expect(queryMock).toHaveBeenNthCalledWith(
+      2,
+      'SELECT id FROM votes WHERE photo_id = $1 AND user_id = $2',
+      [3, 2]
+    );
+    expect(queryMock).toHaveBeenNthCalledWith(
+      3,
+      expect.stringContaining('INSERT INTO votes (photo_id, user_id)'),
+      [3, 2]
+    );
+  });
+
   test('deleteVote valida photo_id', async () => {
     await expect(deleteVote({ body: { photo_id: 0 }, user: { id: 1 } }, createRes())).rejects.toMatchObject({
       status: 400,
@@ -116,5 +142,21 @@ describe('votes controller', () => {
       total_votes: 4,
       action: 'deleted',
     });
+  });
+
+  test('deleteVote ignora user_id enviado por el cliente y borra solo el voto autenticado', async () => {
+    queryMock
+      .mockResolvedValueOnce({ rowCount: 1 })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 3, community_id: 5 }] })
+      .mockResolvedValueOnce({ rows: [{ total_votes: 4 }] });
+    const res = createRes();
+
+    await deleteVote({ body: { photo_id: 3, user_id: 999 }, user: { id: 1 } }, res);
+
+    expect(queryMock).toHaveBeenNthCalledWith(
+      1,
+      'DELETE FROM votes WHERE photo_id = $1 AND user_id = $2',
+      [3, 1]
+    );
   });
 });
