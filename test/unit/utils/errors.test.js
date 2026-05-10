@@ -31,7 +31,7 @@ describe('errors utils', () => {
 
     expect(payload).toEqual({
       code: 'ANY',
-      message: 'msg',
+      message: 'Error inesperado del servidor',
       details: [],
     });
   });

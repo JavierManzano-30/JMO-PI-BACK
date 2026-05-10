@@ -50,7 +50,7 @@ describe('votes controller', () => {
 
   test('createVote evita voto duplicado', async () => {
     queryMock
-      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 3 }] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 3, can_vote: true }] })
       .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 99 }] });
 
     await expect(createVote({ body: { photo_id: '3' }, user: { id: 2 } }, createRes())).rejects.toMatchObject({
@@ -61,7 +61,7 @@ describe('votes controller', () => {
 
   test('createVote registra voto', async () => {
     queryMock
-      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 3, community_id: 2 }] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 3, community_id: 2, can_vote: true }] })
       .mockResolvedValueOnce({ rowCount: 0, rows: [] })
       .mockResolvedValueOnce({
         rows: [{ id: 20, photo_id: 3, user_id: 2, created_at: '2026-02-01' }],
@@ -85,7 +85,7 @@ describe('votes controller', () => {
 
   test('createVote ignora user_id enviado por el cliente y usa el usuario autenticado', async () => {
     queryMock
-      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 3, community_id: 2 }] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 3, community_id: 2, can_vote: true }] })
       .mockResolvedValueOnce({ rowCount: 0, rows: [] })
       .mockResolvedValueOnce({
         rows: [{ id: 21, photo_id: 3, user_id: 2, created_at: '2026-02-01' }],
@@ -107,6 +107,18 @@ describe('votes controller', () => {
       expect.stringContaining('INSERT INTO votes (photo_id, user_id)'),
       [3, 2]
     );
+  });
+
+  test('createVote traduce conflicto unico a voto duplicado', async () => {
+    queryMock
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 3, community_id: 2, can_vote: true }] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockRejectedValueOnce({ code: '23505', constraint: 'uq_votes_user_photo' });
+
+    await expect(createVote({ body: { photo_id: '3' }, user: { id: 2 } }, createRes())).rejects.toMatchObject({
+      status: 400,
+      code: 'ALREADY_VOTED',
+    });
   });
 
   test('deleteVote valida photo_id', async () => {

@@ -54,7 +54,7 @@ export async function listWinners(req, res) {
 
   const themeState = resolveThemeState(req.query);
   if (themeState === 'active') {
-    filters.push('t.is_active = true');
+    filters.push('t.is_active = true AND t.start_date <= CURRENT_DATE AND t.end_date >= CURRENT_DATE');
   }
   if (themeState === 'closed') {
     filters.push('(t.is_active = false OR t.end_date < CURRENT_DATE)');

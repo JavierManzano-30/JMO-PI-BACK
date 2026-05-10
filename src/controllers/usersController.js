@@ -5,6 +5,7 @@ import {
   updateUserProfileById,
 } from '../models/usersModel.js';
 import { createError } from '../utils/errors.js';
+import { buildUploadedFileUrl, cleanupUploadedFile } from '../utils/upload.js';
 
 export async function getMe(req, res) {
   const result = await findUserProfileById(req.user.id);
@@ -21,21 +22,30 @@ export async function updateMe(req, res) {
   const patch = {};
 
   if (display_name !== undefined) {
-    if (typeof display_name !== 'string' || display_name.length > 100) {
+    const normalizedDisplayName = typeof display_name === 'string' ? display_name.trim() : '';
+    if (!normalizedDisplayName || normalizedDisplayName.length > 100) {
+      await cleanupUploadedFile(req.file);
       throw createError(400, 'VALIDATION_ERROR', 'display_name inválido', []);
     }
-    patch.displayName = display_name;
+    patch.displayName = normalizedDisplayName;
   }
 
   if (req.file) {
-    patch.avatarUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+    patch.avatarUrl = buildUploadedFileUrl(req, req.file.filename);
   }
 
   if (Object.keys(patch).length === 0) {
+    await cleanupUploadedFile(req.file);
     throw createError(400, 'VALIDATION_ERROR', 'No hay cambios para aplicar', []);
   }
 
-  const result = await updateUserProfileById(req.user.id, patch);
+  let result;
+  try {
+    result = await updateUserProfileById(req.user.id, patch);
+  } catch (error) {
+    await cleanupUploadedFile(req.file);
+    throw error;
+  }
 
   res.json(result.rows[0]);
 }

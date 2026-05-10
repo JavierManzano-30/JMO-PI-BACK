@@ -5,20 +5,21 @@ export function errorHandler(error, _req, res, _next) {
   // Se mantiene por la firma de middleware de errores de Express (4 argumentos).
   void _next;
 
-  // Log the error for debugging
-  console.error('❌ Server Error:', {
-    message: error.message,
-    code: error.code,
-    stack: error.stack,
-    details: error.details
-  });
-
   if (error.code === 'LIMIT_FILE_SIZE') {
     error.status = 413;
     error.code = 'PAYLOAD_TOO_LARGE';
     error.message = 'Archivo demasiado grande';
   }
   const status = error.status || 500;
+
+  if (status >= 500) {
+    console.error('Server Error:', {
+      message: error.message,
+      code: error.code,
+      stack: error.stack,
+      details: error.details,
+    });
+  }
   const payload = errorPayload(error);
   res.status(status).json(payload);
 }

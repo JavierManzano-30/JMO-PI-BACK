@@ -32,15 +32,24 @@ async function seed() {
     `);
 
     // 3. Insertar concurso (theme) "prueba 1"
-    const today = new Date().toISOString().split('T')[0];
-    const nextMonth = new Date();
-    nextMonth.setMonth(nextMonth.getMonth() + 1);
-    const endDate = nextMonth.toISOString().split('T')[0];
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const daysFromMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const monday = new Date(today.getFullYear(), today.getMonth(), today.getDate() + daysFromMonday);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    const formatLocalDate = (date) => [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, '0'),
+      String(date.getDate()).padStart(2, '0'),
+    ].join('-');
+    const startDate = formatLocalDate(monday);
+    const endDate = formatLocalDate(sunday);
 
     await pool.query(`
       INSERT INTO themes (community_id, title, description, start_date, end_date, is_active)
       VALUES ($1, 'prueba 1', 'Concurso de prueba inicial', $2, $3, true)
-    `, [communityId, today, endDate]);
+    `, [communityId, startDate, endDate]);
 
     console.log('✅ Concurso "prueba 1", categorías y comunidad creados con éxito!');
   } catch (err) {

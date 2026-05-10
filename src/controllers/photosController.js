@@ -2,6 +2,7 @@
 import { createError } from '../utils/errors.js';
 import { buildMeta, parsePagination } from '../utils/pagination.js';
 import { emitPhotoCreated } from '../realtime/socket.js';
+import { buildUploadedFileUrl, cleanupUploadedFile } from '../utils/upload.js';
 import {
   countPhotos,
   findActivePhotoByUserAndTheme,
@@ -19,6 +20,11 @@ import {
 
 const PHOTO_TITLE_MAX_LENGTH = 80;
 const PHOTO_DESCRIPTION_MAX_LENGTH = 500;
+
+async function rejectCreatePhotoWithCleanup(req, error) {
+  await cleanupUploadedFile(req.file);
+  throw error;
+}
 
 export async function listPhotos(req, res) {
   const { page, limit, offset } = parsePagination(req.query);
@@ -92,16 +98,16 @@ export async function createPhoto(req, res) {
   const description = typeof rawDescription === 'string' ? rawDescription.trim() : '';
 
   if (!title || title.length > PHOTO_TITLE_MAX_LENGTH) {
-    throw createError(400, 'VALIDATION_ERROR', 'Título inválido', []);
+    await rejectCreatePhotoWithCleanup(req, createError(400, 'VALIDATION_ERROR', 'Título inválido', []));
   }
 
   if (description.length > PHOTO_DESCRIPTION_MAX_LENGTH) {
-    throw createError(400, 'VALIDATION_ERROR', 'Descripción inválida', []);
+    await rejectCreatePhotoWithCleanup(req, createError(400, 'VALIDATION_ERROR', 'Descripción inválida', []));
   }
 
   const themeId = Number.parseInt(theme_id, 10);
   if (!themeId || themeId < 1 || Number.isNaN(themeId)) {
-    throw createError(400, 'VALIDATION_ERROR', 'theme_id inválido', []);
+    await rejectCreatePhotoWithCleanup(req, createError(400, 'VALIDATION_ERROR', 'theme_id inválido', []));
   }
 
   if (!req.file) {
@@ -111,29 +117,29 @@ export async function createPhoto(req, res) {
   const themeResult = await findThemeById(themeId);
 
   if (themeResult.rowCount === 0) {
-    throw createError(404, 'THEME_NOT_FOUND', 'Tema no encontrado', []);
+    await rejectCreatePhotoWithCleanup(req, createError(404, 'THEME_NOT_FOUND', 'Tema no encontrado', []));
   }
 
   if (!themeResult.rows[0].is_active) {
-    throw createError(400, 'THEME_INACTIVE', 'El tema no está activo', []);
+    await rejectCreatePhotoWithCleanup(req, createError(400, 'THEME_INACTIVE', 'El tema no está activo', []));
   }
 
   const existingPhoto = await findActivePhotoByUserAndTheme(req.user.id, themeId);
 
   if (existingPhoto.rowCount > 0) {
-    throw createError(409, 'PHOTO_ALREADY_SUBMITTED', 'Ya has subido una foto para este tema', []);
+    await rejectCreatePhotoWithCleanup(req, createError(409, 'PHOTO_ALREADY_SUBMITTED', 'Ya has subido una foto para este tema', []));
   }
 
-  const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+  const fileUrl = buildUploadedFileUrl(req, req.file.filename);
 
   const categoryId = category_id ? Number.parseInt(category_id, 10) : null;
   if (category_id && (Number.isNaN(categoryId) || categoryId < 1)) {
-    throw createError(400, 'VALIDATION_ERROR', 'category_id inválido', []);
+    await rejectCreatePhotoWithCleanup(req, createError(400, 'VALIDATION_ERROR', 'category_id inválido', []));
   }
   if (categoryId) {
     const categoryCheck = await findCategoryById(categoryId);
     if (categoryCheck.rowCount === 0) {
-      throw createError(400, 'VALIDATION_ERROR', 'Categoría inválida', []);
+      await rejectCreatePhotoWithCleanup(req, createError(400, 'VALIDATION_ERROR', 'Categoría inválida', []));
     }
   }
 
@@ -154,8 +160,9 @@ export async function createPhoto(req, res) {
       error?.code === '23505' &&
       (error?.constraint === 'uq_photos_user_theme' || error?.constraint === 'uq_photos_user_theme_active')
     ) {
-      throw createError(409, 'PHOTO_ALREADY_SUBMITTED', 'Ya has subido una foto para este tema', []);
+      await rejectCreatePhotoWithCleanup(req, createError(409, 'PHOTO_ALREADY_SUBMITTED', 'Ya has subido una foto para este tema', []));
     }
+    await cleanupUploadedFile(req.file);
     throw error;
   }
 

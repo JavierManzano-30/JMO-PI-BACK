@@ -2,6 +2,8 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
 
+process.env.ENABLE_EMAIL_TEST_ENDPOINT = 'true';
+
 const sendMailMock = jest.fn();
 const createTransportMock = jest.fn(() => ({ sendMail: sendMailMock }));
 
@@ -13,6 +15,13 @@ jest.unstable_mockModule('nodemailer', () => ({
 
 const { default: app } = await import('../../../src/app.js');
 const { resetMailer } = await import('../../../src/services/email.js');
+const { signToken } = await import('../../../src/utils/auth.js');
+
+const adminToken = signToken({
+  id: 1,
+  role: 'admin',
+  email: 'admin@snapnation.test',
+});
 
 describe('Email controller', () => {
   let consoleErrorSpy;
@@ -29,10 +38,13 @@ describe('Email controller', () => {
   });
 
   test('POST /api/v1/email/test valida campos obligatorios', async () => {
-    const res = await request(app).post('/api/v1/email/test').send({
-      to: 'destino@correo.com',
-      subject: '',
-    });
+    const res = await request(app)
+      .post('/api/v1/email/test')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        to: 'destino@correo.com',
+        subject: '',
+      });
 
     expect(res.status).toBe(400);
     expect(res.body.code).toBe('VALIDATION_ERROR');
@@ -46,11 +58,14 @@ describe('Email controller', () => {
       rejected: [],
     });
 
-    const res = await request(app).post('/api/v1/email/test').send({
-      to: 'destino@correo.com',
-      subject: 'Prueba endpoint',
-      text: 'Hola',
-    });
+    const res = await request(app)
+      .post('/api/v1/email/test')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        to: 'destino@correo.com',
+        subject: 'Prueba endpoint',
+        text: 'Hola',
+      });
 
     expect(res.status).toBe(200);
     expect(res.body.messageId).toContain('mailhog-1');

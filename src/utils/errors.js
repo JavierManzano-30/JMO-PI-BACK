@@ -8,9 +8,11 @@ export function createError(status, code, message, details = []) {
 }
 
 export function errorPayload(error) {
+  const status = error.status || 500;
+
   return {
     code: error.code || 'INTERNAL_ERROR',
-    message: error.message || 'Error inesperado del servidor',
-    details: Array.isArray(error.details) ? error.details : [],
+    message: status >= 500 ? 'Error inesperado del servidor' : (error.message || 'Error inesperado del servidor'),
+    details: status >= 500 ? [] : (Array.isArray(error.details) ? error.details : []),
   };
 }

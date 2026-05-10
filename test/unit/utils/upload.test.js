@@ -51,7 +51,7 @@ describe('upload utils', () => {
     const options = multerFactory.mock.calls[0][0];
 
     const invalidCb = jest.fn();
-    options.fileFilter({}, { mimetype: 'text/plain' }, invalidCb);
+    options.fileFilter({}, { mimetype: 'text/plain', originalname: 'notes.txt' }, invalidCb);
     expect(invalidCb).toHaveBeenCalledTimes(1);
     expect(invalidCb.mock.calls[0][0]).toMatchObject({
       status: 400,
@@ -59,7 +59,7 @@ describe('upload utils', () => {
     });
 
     const validCb = jest.fn();
-    options.fileFilter({}, { mimetype: 'image/jpeg' }, validCb);
+    options.fileFilter({}, { mimetype: 'image/jpeg', originalname: 'photo.jpg' }, validCb);
     expect(validCb).toHaveBeenCalledWith(null, true);
   });
 });

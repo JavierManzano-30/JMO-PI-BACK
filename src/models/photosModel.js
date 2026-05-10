@@ -45,7 +45,15 @@ export function findPhotos(whereClause, orderBy, values, limit, offset, placehol
 }
 
 export function findThemeById(id) {
-  return pool.query('SELECT id, community_id, is_active FROM themes WHERE id = $1', [id]);
+  return pool.query(
+    `SELECT
+       id,
+       community_id,
+       (is_active = true AND start_date <= CURRENT_DATE AND end_date >= CURRENT_DATE) AS is_active
+     FROM themes
+     WHERE id = $1`,
+    [id]
+  );
 }
 
 export function findActivePhotoByUserAndTheme(userId, themeId) {

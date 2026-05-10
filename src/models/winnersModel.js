@@ -87,7 +87,7 @@ export function findWinners(whereClause, values, limit, offset, placeholderIndex
          t.title AS theme_title,
          t.start_date AS theme_start_date,
          t.end_date AS theme_end_date,
-         t.is_active AS theme_is_active,
+         (t.is_active = true AND t.start_date <= CURRENT_DATE AND t.end_date >= CURRENT_DATE) AS theme_is_active,
          comm.id AS community_id,
          comm.name AS community_name,
          p.id AS photo_id,

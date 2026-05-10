@@ -37,8 +37,8 @@ SELECT
   c.id,
   'Paisajes espectaculares',
   'Tema inicial para dejar el flujo de subida listo en local.',
-  CURRENT_DATE,
-  CURRENT_DATE + INTERVAL '7 days',
+  date_trunc('week', CURRENT_DATE)::date,
+  date_trunc('week', CURRENT_DATE)::date + INTERVAL '6 days',
   true
 FROM communities c
 WHERE c.code = 'MADRID01'

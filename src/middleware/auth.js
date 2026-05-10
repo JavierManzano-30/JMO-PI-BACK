@@ -3,9 +3,14 @@ import jwt from 'jsonwebtoken';
 import { createError } from '../utils/errors.js';
 import config from '../config.js';
 
-export function authenticate(req, _res, next) {
+function getBearerToken(req) {
   const header = req.headers.authorization || '';
-  const [, token] = header.split(' ');
+  const match = header.match(/^Bearer\s+([A-Za-z0-9._~+/-]+=*)$/);
+  return match ? match[1] : null;
+}
+
+export function authenticate(req, _res, next) {
+  const token = getBearerToken(req);
 
   if (!token) {
     return next(createError(401, 'AUTH_REQUIRED', 'Token no presente o inválido'));
@@ -21,8 +26,7 @@ export function authenticate(req, _res, next) {
 }
 
 export function optionalAuth(req, _res, next) {
-  const header = req.headers.authorization || '';
-  const [, token] = header.split(' ');
+  const token = getBearerToken(req);
 
   if (!token) {
     return next();

@@ -2,7 +2,7 @@
 import { Router } from 'express';
 import { authenticate, optionalAuth } from '../middleware/auth.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { createImageUpload } from '../utils/upload.js';
+import { createImageUpload, validateUploadedImage } from '../utils/upload.js';
 import {
   listPhotos,
   createPhoto,
@@ -21,7 +21,7 @@ const upload = createImageUpload();
 
 router.get('/', optionalAuth, asyncHandler(listPhotos));
 
-router.post('/', authenticate, upload.single('image'), asyncHandler(createPhoto));
+router.post('/', authenticate, upload.single('image'), asyncHandler(validateUploadedImage), asyncHandler(createPhoto));
 
 router.get('/:id/ranking', optionalAuth, asyncHandler(getPhotoRanking));
 

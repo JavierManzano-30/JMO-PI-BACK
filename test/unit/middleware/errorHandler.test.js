@@ -43,7 +43,7 @@ describe('errorHandler middleware', () => {
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith({
       code: 'INTERNAL_ERROR',
-      message: 'fallo',
+      message: 'Error inesperado del servidor',
       details: [],
     });
   });
