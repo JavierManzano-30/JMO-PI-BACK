@@ -16,6 +16,10 @@ function validateCorsOrigin(origin, callback) {
     return callback(null, true);
   }
 
+  if (config.cors.origins.includes('*')) {
+    return callback(null, true);
+  }
+
   if (config.cors.origins.includes(origin)) {
     return callback(null, true);
   }
