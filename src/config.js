@@ -51,6 +51,15 @@ const config = {
     secret: jwtSecret,
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   },
+  supabase: {
+    url: process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '',
+    key:
+      process.env.SUPABASE_PUBLISHABLE_KEY ||
+      process.env.SUPABASE_ANON_KEY ||
+      process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+      process.env.VITE_SUPABASE_ANON_KEY ||
+      '',
+  },
   // CORS para permitir o restringir origenes del frontend.
   cors: {
     origins: corsOrigins.length > 0 ? corsOrigins : (isProduction ? [] : defaultDevelopmentOrigins),

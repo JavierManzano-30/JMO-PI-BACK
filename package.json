@@ -19,8 +19,7 @@
     "db:setup": "node src/db/setup.js",
     "db:drizzle:generate": "drizzle-kit generate",
     "db:drizzle:migrate": "drizzle-kit migrate",
-    "db:drizzle:push": "drizzle-kit push",
-    "db:drizzle:studio": "drizzle-kit studio"
+    "db:drizzle:push": "drizzle-kit push"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.103.3",

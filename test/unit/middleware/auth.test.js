@@ -10,6 +10,14 @@ jest.unstable_mockModule('jsonwebtoken', () => ({
   },
 }));
 
+jest.unstable_mockModule('@supabase/supabase-js', () => ({
+  createClient: () => ({
+    auth: {
+      getUser: jest.fn(),
+    },
+  }),
+}));
+
 const { authenticate, optionalAuth } = await import('../../../src/middleware/auth.js');
 
 describe('auth middleware', () => {
@@ -18,63 +26,63 @@ describe('auth middleware', () => {
     verifyMock.mockReset();
   });
 
-  test('authenticate falla sin token', () => {
+  test('authenticate falla sin token', async () => {
     const next = jest.fn();
-    authenticate({ headers: {} }, {}, next);
+    await authenticate({ headers: {} }, {}, next);
 
     expect(next).toHaveBeenCalledTimes(1);
     expect(next.mock.calls[0][0].status).toBe(401);
     expect(next.mock.calls[0][0].code).toBe('AUTH_REQUIRED');
   });
 
-  test('authenticate acepta token valido', () => {
+  test('authenticate acepta token valido', async () => {
     // Simulamos que jwt.verify devuelve el payload del usuario.
     verifyMock.mockReturnValue({ id: 10, role: 'user' });
     const req = { headers: { authorization: 'Bearer token-ok' } };
     const next = jest.fn();
 
-    authenticate(req, {}, next);
+    await authenticate(req, {}, next);
 
     expect(req.user).toEqual({ id: 10, role: 'user' });
     expect(next).toHaveBeenCalledWith();
   });
 
-  test('authenticate falla con token invalido', () => {
+  test('authenticate falla con token invalido', async () => {
     // Simulamos error de verificacion de JWT.
     verifyMock.mockImplementation(() => {
       throw new Error('bad token');
     });
     const next = jest.fn();
 
-    authenticate({ headers: { authorization: 'Bearer bad' } }, {}, next);
+    await authenticate({ headers: { authorization: 'Bearer bad' } }, {}, next);
 
     expect(next).toHaveBeenCalledTimes(1);
     expect(next.mock.calls[0][0].status).toBe(401);
   });
 
-  test('optionalAuth sigue sin token', () => {
+  test('optionalAuth sigue sin token', async () => {
     // En optionalAuth, no tener token no es error: continua sin req.user.
     const req = { headers: {} };
     const next = jest.fn();
 
-    optionalAuth(req, {}, next);
+    await optionalAuth(req, {}, next);
 
     expect(req.user).toBeUndefined();
     expect(next).toHaveBeenCalledWith();
   });
 
-  test('optionalAuth guarda usuario con token valido', () => {
+  test('optionalAuth guarda usuario con token valido', async () => {
     verifyMock.mockReturnValue({ id: 2 });
     const req = { headers: { authorization: 'Bearer token-ok' } };
     const next = jest.fn();
 
-    optionalAuth(req, {}, next);
+    await optionalAuth(req, {}, next);
 
     expect(req.user).toEqual({ id: 2 });
     expect(next).toHaveBeenCalledWith();
   });
 
-  test('optionalAuth pone user=null con token invalido', () => {
+  test('optionalAuth pone user=null con token invalido', async () => {
     // optionalAuth no bloquea la peticion si el token esta mal.
     verifyMock.mockImplementation(() => {
       throw new Error('bad token');
@@ -82,7 +90,7 @@ describe('auth middleware', () => {
     const req = { headers: { authorization: 'Bearer bad' } };
     const next = jest.fn();
 
-    optionalAuth(req, {}, next);
+    await optionalAuth(req, {}, next);
 
     expect(req.user).toBeNull();
     expect(next).toHaveBeenCalledWith();
