@@ -162,6 +162,9 @@ export async function createPhoto(req, res) {
     ) {
       await rejectCreatePhotoWithCleanup(req, createError(409, 'PHOTO_ALREADY_SUBMITTED', 'Ya has subido una foto para este tema', []));
     }
+    if (error?.code === '23514' || error?.code === 'P0001') {
+      await rejectCreatePhotoWithCleanup(req, createError(400, 'THEME_INACTIVE', 'El tema no está activo', []));
+    }
     await cleanupUploadedFile(req.file);
     throw error;
   }

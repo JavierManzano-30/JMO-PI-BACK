@@ -4,10 +4,10 @@ import { randomBytes } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// Carga siempre el .env del backend aunque el proceso se lance desde otra carpeta.
+// Carga el .env del backend sin pisar variables reales del entorno (Render, CI, shell).
 const currentFilePath = fileURLToPath(import.meta.url);
 const currentDirPath = path.dirname(currentFilePath);
-dotenv.config({ path: path.resolve(currentDirPath, '../.env'), override: true });
+dotenv.config({ path: path.resolve(currentDirPath, '../.env') });
 
 // Convierte una variable de entorno en numero con valor por defecto.
 function toNumber(value, fallback) {
@@ -18,6 +18,28 @@ function toNumber(value, fallback) {
 // Limita un valor numerico dentro de un rango.
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
+}
+
+function expandLocalhostOriginVariants(origins) {
+  const expanded = new Set(origins);
+
+  origins.forEach((origin) => {
+    try {
+      const url = new URL(origin);
+
+      if (url.hostname === 'localhost') {
+        url.hostname = '127.0.0.1';
+        expanded.add(url.toString().replace(/\/$/, ''));
+      } else if (url.hostname === '127.0.0.1') {
+        url.hostname = 'localhost';
+        expanded.add(url.toString().replace(/\/$/, ''));
+      }
+    } catch {
+      // Permitimos entradas especiales como "*".
+    }
+  });
+
+  return [...expanded];
 }
 
 const corsOrigins = process.env.CORS_ORIGIN
@@ -62,7 +84,9 @@ const config = {
   },
   // CORS para permitir o restringir origenes del frontend.
   cors: {
-    origins: corsOrigins.length > 0 ? corsOrigins : (isProduction ? [] : defaultDevelopmentOrigins),
+    origins: expandLocalhostOriginVariants(
+      corsOrigins.length > 0 ? corsOrigins : (isProduction ? [] : defaultDevelopmentOrigins)
+    ),
     credentials: process.env.CORS_CREDENTIALS === 'true',
   },
   // Limite maximo para payload JSON/urlencoded.

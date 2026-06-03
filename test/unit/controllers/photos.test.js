@@ -262,6 +262,25 @@ describe('photos controller', () => {
     expect(res.status).toHaveBeenCalledWith(201);
   });
 
+  test('createPhoto traduce el bloqueo de base de datos por concurso cerrado', async () => {
+    findThemeByIdMock.mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 2, community_id: 3, is_active: true }] });
+    findActivePhotoByUserAndThemeMock.mockResolvedValueOnce({ rowCount: 0, rows: [] });
+    insertPhotoMock.mockRejectedValueOnce({ code: '23514' });
+
+    await expect(
+      createPhoto(
+        {
+          body: { title: 'ok', theme_id: '2' },
+          user: { id: 1 },
+          file: { filename: 'a.png' },
+          protocol: 'http',
+          get: (name) => (name === 'host' ? 'localhost:3000' : ''),
+        },
+        createRes()
+      )
+    ).rejects.toMatchObject({ status: 400, code: 'THEME_INACTIVE' });
+  });
+
   test('getPhotoById valida id, 404 y success', async () => {
     await expect(getPhotoById({ params: { id: 'x' }, user: null }, createRes())).rejects.toMatchObject({
       status: 400,

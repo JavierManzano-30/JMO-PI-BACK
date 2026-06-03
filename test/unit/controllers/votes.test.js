@@ -59,6 +59,15 @@ describe('votes controller', () => {
     });
   });
 
+  test('createVote rechaza concurso con votación cerrada', async () => {
+    queryMock.mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 3, community_id: 2, can_vote: false }] });
+
+    await expect(createVote({ body: { photo_id: '3' }, user: { id: 2 } }, createRes())).rejects.toMatchObject({
+      status: 400,
+      code: 'VOTING_CLOSED',
+    });
+  });
+
   test('createVote registra voto', async () => {
     queryMock
       .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 3, community_id: 2, can_vote: true }] })
@@ -121,6 +130,18 @@ describe('votes controller', () => {
     });
   });
 
+  test('createVote traduce bloqueo de base de datos por votación cerrada', async () => {
+    queryMock
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 3, community_id: 2, can_vote: true }] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockRejectedValueOnce({ code: '23514' });
+
+    await expect(createVote({ body: { photo_id: '3' }, user: { id: 2 } }, createRes())).rejects.toMatchObject({
+      status: 400,
+      code: 'VOTING_CLOSED',
+    });
+  });
+
   test('deleteVote valida photo_id', async () => {
     await expect(deleteVote({ body: { photo_id: 0 }, user: { id: 1 } }, createRes())).rejects.toMatchObject({
       status: 400,
@@ -129,7 +150,9 @@ describe('votes controller', () => {
   });
 
   test('deleteVote devuelve 404 si no hay voto', async () => {
-    queryMock.mockResolvedValue({ rowCount: 0 });
+    queryMock
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 3, community_id: 5, can_vote: true }] })
+      .mockResolvedValueOnce({ rowCount: 0 });
 
     await expect(deleteVote({ body: { photo_id: 3 }, user: { id: 1 } }, createRes())).rejects.toMatchObject({
       status: 404,
@@ -137,10 +160,19 @@ describe('votes controller', () => {
     });
   });
 
+  test('deleteVote rechaza concurso con votación cerrada', async () => {
+    queryMock.mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 3, community_id: 5, can_vote: false }] });
+
+    await expect(deleteVote({ body: { photo_id: 3 }, user: { id: 1 } }, createRes())).rejects.toMatchObject({
+      status: 400,
+      code: 'VOTING_CLOSED',
+    });
+  });
+
   test('deleteVote elimina voto', async () => {
     queryMock
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 3, community_id: 5, can_vote: true }] })
       .mockResolvedValueOnce({ rowCount: 1 })
-      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 3, community_id: 5 }] })
       .mockResolvedValueOnce({ rows: [{ total_votes: 4 }] });
     const res = createRes();
 
@@ -158,15 +190,15 @@ describe('votes controller', () => {
 
   test('deleteVote ignora user_id enviado por el cliente y borra solo el voto autenticado', async () => {
     queryMock
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 3, community_id: 5, can_vote: true }] })
       .mockResolvedValueOnce({ rowCount: 1 })
-      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 3, community_id: 5 }] })
       .mockResolvedValueOnce({ rows: [{ total_votes: 4 }] });
     const res = createRes();
 
     await deleteVote({ body: { photo_id: 3, user_id: 999 }, user: { id: 1 } }, res);
 
     expect(queryMock).toHaveBeenNthCalledWith(
-      1,
+      2,
       'DELETE FROM votes WHERE photo_id = $1 AND user_id = $2',
       [3, 1]
     );

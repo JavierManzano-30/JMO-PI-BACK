@@ -15,6 +15,13 @@
       "when": 1770732600000,
       "tag": "0001_fix_photos_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1771390800000,
+      "tag": "0002_enforce_active_contest_writes",
+      "breakpoints": true
     }
   ]
 }

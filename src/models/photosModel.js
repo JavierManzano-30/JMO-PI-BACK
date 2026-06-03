@@ -114,7 +114,7 @@ export function findPhotoWithDetailsById(photoId, userId) {
          'description', t.description,
          'start_date', t.start_date,
          'end_date', t.end_date,
-         'is_active', t.is_active,
+         'is_active', (t.is_active = true AND t.start_date <= CURRENT_DATE AND t.end_date >= CURRENT_DATE),
          'created_at', t.created_at
        ) AS theme,
        CASE
@@ -163,7 +163,7 @@ export function findPhotoRankingContextById(photoId) {
        t.description AS theme_description,
        t.start_date AS theme_start_date,
        t.end_date AS theme_end_date,
-       t.is_active AS theme_is_active,
+       (t.is_active = true AND t.start_date <= CURRENT_DATE AND t.end_date >= CURRENT_DATE) AS theme_is_active,
        (SELECT COUNT(*)::int FROM votes v WHERE v.photo_id = p.id) AS votes_count
      FROM photos p
      JOIN users u ON u.id = p.user_id

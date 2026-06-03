@@ -66,6 +66,7 @@ describe('photos model', () => {
       expect.stringContaining('AS has_user_voted'),
       [8, 2]
     );
+    expect(queryMock.mock.calls[0][0]).toContain('start_date <= CURRENT_DATE AND t.end_date >= CURRENT_DATE');
   });
 
   test('consultas de ranking por foto y tema', async () => {

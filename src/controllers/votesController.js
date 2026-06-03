@@ -51,6 +51,9 @@ export async function createVote(req, res) {
     if (error?.code === '23505' && error?.constraint === 'uq_votes_user_photo') {
       throw createError(400, 'ALREADY_VOTED', 'Ya has votado esta foto', []);
     }
+    if (error?.code === '23514' || error?.code === 'P0001') {
+      throw createError(400, 'VOTING_CLOSED', 'La votación de este concurso no está activa', []);
+    }
     throw error;
   }
 
@@ -77,19 +80,42 @@ export async function deleteVote(req, res) {
     throw createError(400, 'VALIDATION_ERROR', 'photo_id inválido', []);
   }
 
-  const deleteResult = await pool.query(
-    'DELETE FROM votes WHERE photo_id = $1 AND user_id = $2',
-    [photoId, req.user.id]
+  const photoResult = await pool.query(
+    `SELECT
+       p.id,
+       p.community_id,
+       (t.is_active = true AND t.start_date <= CURRENT_DATE AND t.end_date >= CURRENT_DATE) AS can_vote
+     FROM photos p
+     JOIN themes t ON t.id = p.theme_id
+     WHERE p.id = $1 AND p.is_deleted = false`,
+    [photoId]
   );
+
+  if (photoResult.rowCount === 0) {
+    throw createError(404, 'PHOTO_NOT_FOUND', 'La foto no existe o fue eliminada', []);
+  }
+
+  if (!photoResult.rows[0].can_vote) {
+    throw createError(400, 'VOTING_CLOSED', 'La votación de este concurso no está activa', []);
+  }
+
+  let deleteResult;
+  try {
+    deleteResult = await pool.query(
+      'DELETE FROM votes WHERE photo_id = $1 AND user_id = $2',
+      [photoId, req.user.id]
+    );
+  } catch (error) {
+    if (error?.code === '23514' || error?.code === 'P0001') {
+      throw createError(400, 'VOTING_CLOSED', 'La votación de este concurso no está activa', []);
+    }
+    throw error;
+  }
 
   if (deleteResult.rowCount === 0) {
     throw createError(404, 'VOTE_NOT_FOUND', 'Voto no encontrado', []);
   }
 
-  const photoResult = await pool.query(
-    'SELECT id, community_id FROM photos WHERE id = $1 AND is_deleted = false',
-    [photoId]
-  );
   const voteCountResult = await pool.query(
     'SELECT COUNT(*)::int AS total_votes FROM votes WHERE photo_id = $1',
     [photoId]

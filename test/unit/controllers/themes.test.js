@@ -45,6 +45,32 @@ describe('themes controller', () => {
     });
   });
 
+  test('listThemes filtra concursos futuros', async () => {
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ total: 1 }] })
+      .mockResolvedValueOnce({
+        rows: [{ id: 2, title: 'Próximo tema', is_active: false, start_date: '2026-06-01' }],
+      });
+
+    const req = { query: { state: 'future', page: '1', limit: '10' } };
+    const res = { json: jest.fn() };
+
+    await listThemes(req, res);
+
+    expect(queryMock.mock.calls[0][0]).toContain('t.is_active = true AND t.start_date > CURRENT_DATE');
+    expect(queryMock.mock.calls[1][0]).toContain('ORDER BY t.start_date ASC, t.created_at DESC');
+    expect(res.json).toHaveBeenCalledWith({
+      data: [{ id: 2, title: 'Próximo tema', is_active: false, start_date: '2026-06-01' }],
+      meta: { total: 1, page: 1, limit: 10, total_pages: 1 },
+    });
+  });
+
+  test('listThemes valida estado de concurso', async () => {
+    await expect(
+      listThemes({ query: { state: 'bad' } }, { json: jest.fn() })
+    ).rejects.toMatchObject({ status: 400, code: 'VALIDATION_ERROR' });
+  });
+
   test('createTheme valida titulo y fechas', async () => {
     await expect(
       createTheme({ body: { title: '', start_date: '2026-01-05', end_date: '2026-01-11' } }, { status: jest.fn() })

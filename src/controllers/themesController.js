@@ -47,6 +47,13 @@ function parseFilterInt(value, label) {
   return parsed;
 }
 
+function resolveThemeState(query) {
+  const state = query.state || query.theme_state;
+  if (state === undefined || state === '' || state === 'all') return null;
+  if (['active', 'closed', 'future'].includes(state)) return state;
+  throw createError(400, 'VALIDATION_ERROR', 'Estado de concurso inválido', []);
+}
+
 export async function listThemes(req, res) {
   const { page, limit, offset } = parsePagination(req.query);
   const filters = [];
@@ -59,39 +66,55 @@ export async function listThemes(req, res) {
     index += 1;
   };
 
-  if (req.query.is_active !== undefined) {
+  const themeState = resolveThemeState(req.query);
+  if (themeState === 'active') {
+    filters.push('t.is_active = true AND t.start_date <= CURRENT_DATE AND t.end_date >= CURRENT_DATE');
+  } else if (themeState === 'closed') {
+    filters.push('(t.is_active = false OR t.end_date < CURRENT_DATE)');
+  } else if (themeState === 'future') {
+    filters.push('t.is_active = true AND t.start_date > CURRENT_DATE');
+  } else if (req.query.is_active !== undefined) {
     const isActive = req.query.is_active === 'true' || req.query.is_active === true;
     if (isActive) {
-      filters.push('is_active = true AND start_date <= CURRENT_DATE AND end_date >= CURRENT_DATE');
+      filters.push('t.is_active = true AND t.start_date <= CURRENT_DATE AND t.end_date >= CURRENT_DATE');
     } else {
-      filters.push('(is_active = false OR start_date > CURRENT_DATE OR end_date < CURRENT_DATE)');
+      filters.push('(t.is_active = false OR t.start_date > CURRENT_DATE OR t.end_date < CURRENT_DATE)');
     }
   }
   if (req.query.community_id) {
-    addFilter('community_id = ?', parseFilterInt(req.query.community_id, 'community_id'));
+    addFilter('t.community_id = ?', parseFilterInt(req.query.community_id, 'community_id'));
   }
 
   const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
 
   const countResult = await pool.query(
-    `SELECT COUNT(*)::int AS total FROM themes ${whereClause}`,
+    `SELECT COUNT(*)::int AS total
+     FROM themes t
+     LEFT JOIN communities c ON c.id = t.community_id
+     ${whereClause}`,
     values
   );
 
   const total = countResult.rows[0]?.total || 0;
+  const orderBy = themeState === 'future'
+    ? 't.start_date ASC, t.created_at DESC'
+    : 't.start_date DESC, t.created_at DESC';
 
   const listResult = await pool.query(
     `SELECT
-       id,
-       title,
-       description,
-       start_date,
-       end_date,
-       (is_active = true AND start_date <= CURRENT_DATE AND end_date >= CURRENT_DATE) AS is_active,
-       created_at
-     FROM themes
+       t.id,
+       t.title,
+       t.description,
+       t.start_date,
+       t.end_date,
+       (t.is_active = true AND t.start_date <= CURRENT_DATE AND t.end_date >= CURRENT_DATE) AS is_active,
+       t.created_at,
+       t.community_id,
+       c.name AS community_name
+     FROM themes t
+     LEFT JOIN communities c ON c.id = t.community_id
      ${whereClause}
-     ORDER BY start_date DESC, created_at DESC
+     ORDER BY ${orderBy}
      LIMIT $${index} OFFSET $${index + 1}`,
     [...values, limit, offset]
   );
